@@ -50,7 +50,10 @@ Video
 ├── description: String (nullable)
 ├── thumbnailUrl: String
 ├── durationSeconds: Integer (nullable)
-├── videoDate: LocalDate (nullable) // When incident occurred
+├── channelId: String (nullable)        // YouTube channel ID
+├── channelName: String (nullable)      // YouTube channel name
+├── publishedAt: Instant (nullable)     // When published on YouTube
+├── videoDate: LocalDate (nullable)     // When incident occurred (user-provided)
 ├── amendments: Set<Amendment>
 ├── participants: Set<Participant>
 ├── status: VideoStatus (PENDING, APPROVED, REJECTED, DELETED)
@@ -113,15 +116,37 @@ private static final List<Pattern> YOUTUBE_PATTERNS = List.of(
     Pattern.compile("youtube\\.com/embed/([\\w-]{11})")
 );
 
-// Fetched metadata
+// Fetched metadata from YouTube Data API
 public record YouTubeMetadata(
+    String videoId,
     String title,
     String description,
     String thumbnailUrl,
     Duration duration,
+    String channelId,
+    String channelName,
     Instant publishedAt
 ) { }
 ```
+
+### Integration Patterns
+
+The YouTube client implements the external API patterns defined in Technical Requirements:
+
+- **Circuit Breaker**: Resilience4j circuit breaker with 5-call sliding window
+- **Caching**: 24-hour cache on metadata (Redis) to reduce API quota usage
+- **Rate Limiting**: Client-side rate limiter to stay within 10,000 units/day quota
+- **Retry**: Exponential backoff (1s, 2s, 4s) for transient failures
+- **Timeout**: 5-second timeout per API call
+
+### Error Handling
+
+| YouTube API Error | Internal Handling |
+|-------------------|-------------------|
+| 404 Not Found | Reject submission with "Video not found" |
+| 403 Forbidden | Reject with "Video is private or restricted" |
+| 429 Rate Limited | Retry with backoff, alert if persistent |
+| 5xx Server Error | Retry with backoff, fallback to cached data |
 
 ## Local Development
 
