@@ -102,9 +102,15 @@ enum Participant { POLICE, GOVERNMENT, BUSINESS, CITIZEN }
 | Event | Trigger | Consumers |
 |-------|---------|-----------|
 | VideoSubmitted | New submission | moderation-service |
-| VideoApproved | Moderation approval | search-service, location-service |
 | VideoUpdated | Metadata change | search-service |
 | VideoDeleted | Video removal | search-service, location-service |
+
+## Events Consumed
+
+| Event | Source | Action |
+|-------|--------|--------|
+| VideoApproved | moderation-service | Update video status to APPROVED |
+| VideoRejected | moderation-service | Update video status to REJECTED |
 
 ## YouTube Integration
 
