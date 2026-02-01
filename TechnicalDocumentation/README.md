@@ -43,7 +43,7 @@ The Video Service is the core content management service for AccountabilityAtlas
 ## Domain Model
 
 ```
-Video
+Video (temporal - sys_period tracks history)
 ├── id: UUID
 ├── youtubeId: String
 ├── title: String
@@ -58,15 +58,14 @@ Video
 ├── participants: Set<Participant>
 ├── status: VideoStatus (PENDING, APPROVED, REJECTED, DELETED)
 ├── submittedBy: UUID
-├── createdAt: Instant
-└── updatedAt: Instant
+└── sysPeriod: tstzrange  // lower bound = created, NULL upper = current
 
-VideoLocation
+VideoLocation (temporal - sys_period tracks history)
 ├── id: UUID
 ├── videoId: UUID
 ├── locationId: UUID
 ├── isPrimary: boolean
-└── addedAt: Instant
+└── sysPeriod: tstzrange  // lower bound = added time
 
 enum Amendment { FIRST, SECOND, FOURTH, FIFTH }
 enum Participant { POLICE, GOVERNMENT, BUSINESS, CITIZEN }
