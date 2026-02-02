@@ -1,0 +1,846 @@
+openapi: 3.1.0
+info:
+  title: AccountabilityAtlas Video Service API
+  version: 1.0.0
+  description: |
+    Core content management service for AccountabilityAtlas.
+    Manages video records, YouTube metadata integration, amendment categorization,
+    and video-location associations.
+
+    ## Access Patterns
+    - **Public (via Gateway)**: `https://api.accountabilityatlas.com/api/v1/videos/...`
+    - **Internal (service-to-service)**: `http://video-service:8082/videos/...`
+
+    The API Gateway adds the `/api/v1` prefix for public requests.
+    Services calling directly use paths without the version prefix.
+  contact:
+    name: AccountabilityAtlas Team
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8082
+    description: Local development (direct)
+  - url: http://video-service:8082
+    description: Internal service mesh (Kubernetes/ECS service discovery)
+  - url: https://api.accountabilityatlas.com/api/v1
+    description: Production (via API Gateway)
+
+tags:
+  - name: Videos
+    description: Video CRUD operations
+  - name: VideoLocations
+    description: Video-location associations
+
+security:
+  - bearerAuth: []
+
+paths:
+  /videos:
+    get:
+      operationId: listVideos
+      summary: List videos with filtering and pagination
+      description: |
+        Returns a paginated list of videos. By default, only APPROVED videos are returned.
+        Supports filtering by amendments, participants, submitter, and status.
+      tags: [Videos]
+      security: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/VideoStatus'
+          description: "Filter by status (default: APPROVED)"
+        - name: amendments
+          in: query
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/Amendment'
+          style: form
+          explode: true
+          description: Filter by amendments (OR logic)
+        - name: participants
+          in: query
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/Participant'
+          style: form
+          explode: true
+          description: Filter by participants (OR logic)
+        - name: submittedBy
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by submitter user ID
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Page number (0-indexed)
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Page size
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [createdAt, videoDate]
+            default: createdAt
+          description: Sort field
+        - name: direction
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+          description: Sort direction
+      responses:
+        '200':
+          description: Paginated list of videos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+    post:
+      operationId: createVideo
+      summary: Submit a new video
+      description: |
+        Submit a new video for moderation. The service fetches metadata from YouTube.
+        Videos start in PENDING status unless submitter is TRUSTED or higher.
+      tags: [Videos]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVideoRequest'
+      responses:
+        '201':
+          description: Video submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Video already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "VIDEO_EXISTS"
+                message: "This YouTube video has already been submitted"
+                traceId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        '422':
+          description: YouTube video not found or unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "YOUTUBE_VIDEO_UNAVAILABLE"
+                message: "The YouTube video is private, deleted, or does not exist"
+                traceId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /videos/{id}:
+    get:
+      operationId: getVideo
+      summary: Get video details
+      description: Returns full video details including locations and submitter info.
+      tags: [Videos]
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Video details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      operationId: updateVideo
+      summary: Update video metadata
+      description: |
+        Update video amendments, participants, or date. Only the video owner can update.
+        YouTube metadata (title, description, etc.) cannot be changed.
+      tags: [Videos]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateVideoRequest'
+      responses:
+        '200':
+          description: Video updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      operationId: deleteVideo
+      summary: Delete a video
+      description: |
+        Soft-delete a video. Only the owner or a MODERATOR+ can delete.
+        Sets status to DELETED; video is hidden but data retained.
+      tags: [Videos]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Video deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /videos/user/{userId}:
+    get:
+      operationId: getVideosByUser
+      summary: Get videos submitted by a user
+      description: |
+        Returns paginated list of videos submitted by the specified user.
+        Only APPROVED videos are shown unless viewing own submissions.
+      tags: [Videos]
+      security: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/VideoStatus'
+          description: Filter by status (only own submissions can see non-APPROVED)
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: User's videos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /videos/{id}/locations:
+    get:
+      operationId: getVideoLocations
+      summary: Get locations associated with a video
+      description: Returns all locations linked to the video with full location details.
+      tags: [VideoLocations]
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Video ID
+      responses:
+        '200':
+          description: Video locations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoLocationsResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    post:
+      operationId: addVideoLocation
+      summary: Add a location to a video
+      description: |
+        Associate an existing location with the video. Only the video owner can add locations.
+        If isPrimary is true, any existing primary location is demoted.
+      tags: [VideoLocations]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Video ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddVideoLocationRequest'
+      responses:
+        '201':
+          description: Location added to video
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoLocation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Video or location not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "NOT_FOUND"
+                message: "Video or location not found"
+                traceId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        '409':
+          description: Location already associated with video
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "LOCATION_ALREADY_LINKED"
+                message: "This location is already associated with the video"
+                traceId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+
+  /videos/{id}/locations/{locationId}:
+    delete:
+      operationId: removeVideoLocation
+      summary: Remove a location from a video
+      description: |
+        Remove the association between a video and location. Only the video owner can remove.
+        If removing the primary location, no new primary is automatically assigned.
+      tags: [VideoLocations]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Video ID
+        - name: locationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Location ID to remove
+      responses:
+        '204':
+          description: Location removed from video
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Video or video-location association not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "NOT_FOUND"
+                message: "Video-location association not found"
+                traceId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT access token from user-service.
+        Obtain via `/auth/login` or `/auth/oauth/{provider}`.
+
+  schemas:
+    # Enums
+    Amendment:
+      type: string
+      enum: [FIRST, SECOND, FOURTH, FIFTH]
+      description: |
+        Constitutional amendment categories:
+        - `FIRST`: Freedom of speech, press, assembly
+        - `SECOND`: Right to bear arms
+        - `FOURTH`: Protection against unreasonable search/seizure
+        - `FIFTH`: Right against self-incrimination
+
+    Participant:
+      type: string
+      enum: [POLICE, GOVERNMENT, BUSINESS, CITIZEN]
+      description: Types of participants in the recorded encounter
+
+    VideoStatus:
+      type: string
+      enum: [PENDING, APPROVED, REJECTED, DELETED]
+      description: |
+        Video moderation status:
+        - `PENDING`: Awaiting moderation review
+        - `APPROVED`: Published and visible
+        - `REJECTED`: Failed moderation
+        - `DELETED`: Removed by owner or moderator
+
+    # Core domain objects
+    Video:
+      type: object
+      required: [id, youtubeId, title, amendments, participants, status, submittedBy, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        youtubeId:
+          type: string
+          maxLength: 20
+          pattern: "^[\\w-]{11}$"
+          description: YouTube video ID (11 characters)
+        title:
+          type: string
+          maxLength: 500
+        description:
+          type: string
+          nullable: true
+        thumbnailUrl:
+          type: string
+          format: uri
+          maxLength: 500
+        durationSeconds:
+          type: integer
+          minimum: 0
+          nullable: true
+        channelId:
+          type: string
+          maxLength: 50
+          nullable: true
+        channelName:
+          type: string
+          maxLength: 255
+          nullable: true
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the video was published on YouTube
+        videoDate:
+          type: string
+          format: date
+          nullable: true
+          description: When the incident occurred (user-provided)
+        amendments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Amendment'
+          minItems: 1
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/Participant'
+          minItems: 1
+        status:
+          $ref: '#/components/schemas/VideoStatus'
+        submittedBy:
+          type: string
+          format: uuid
+          description: User ID of submitter
+        createdAt:
+          type: string
+          format: date-time
+
+    VideoSummary:
+      type: object
+      description: Abbreviated video for list responses
+      required: [id, youtubeId, title, thumbnailUrl, amendments, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        youtubeId:
+          type: string
+          maxLength: 20
+        title:
+          type: string
+          maxLength: 500
+        thumbnailUrl:
+          type: string
+          format: uri
+          maxLength: 500
+        durationSeconds:
+          type: integer
+          nullable: true
+        amendments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Amendment'
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/Participant'
+        status:
+          $ref: '#/components/schemas/VideoStatus'
+        primaryLocation:
+          $ref: '#/components/schemas/LocationSummary'
+        createdAt:
+          type: string
+          format: date-time
+
+    VideoDetail:
+      allOf:
+        - $ref: '#/components/schemas/Video'
+        - type: object
+          properties:
+            locations:
+              type: array
+              items:
+                $ref: '#/components/schemas/VideoLocation'
+            submitter:
+              $ref: '#/components/schemas/SubmitterSummary'
+
+    VideoLocation:
+      type: object
+      required: [id, videoId, locationId, isPrimary]
+      properties:
+        id:
+          type: string
+          format: uuid
+        videoId:
+          type: string
+          format: uuid
+        locationId:
+          type: string
+          format: uuid
+        isPrimary:
+          type: boolean
+          description: Whether this is the main location for the video
+        location:
+          $ref: '#/components/schemas/LocationSummary'
+
+    LocationSummary:
+      type: object
+      description: Embedded location info (from location-service)
+      required: [id, displayName]
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+          maxLength: 200
+        city:
+          type: string
+          maxLength: 100
+          nullable: true
+        state:
+          type: string
+          maxLength: 50
+          nullable: true
+        coordinates:
+          $ref: '#/components/schemas/Coordinates'
+
+    Coordinates:
+      type: object
+      required: [latitude, longitude]
+      properties:
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+
+    SubmitterSummary:
+      type: object
+      description: Public info about the video submitter
+      required: [id, displayName]
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+          maxLength: 100
+        avatarUrl:
+          type: string
+          format: uri
+          maxLength: 500
+          nullable: true
+
+    # Request schemas
+    CreateVideoRequest:
+      type: object
+      required: [youtubeUrl, amendments, participants]
+      properties:
+        youtubeUrl:
+          type: string
+          format: uri
+          maxLength: 200
+          description: |
+            Full YouTube URL. Supported formats:
+            - https://www.youtube.com/watch?v=VIDEO_ID
+            - https://youtu.be/VIDEO_ID
+            - https://www.youtube.com/embed/VIDEO_ID
+        amendments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Amendment'
+          minItems: 1
+          description: At least one amendment must be selected
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/Participant'
+          minItems: 1
+          description: At least one participant type must be selected
+        videoDate:
+          type: string
+          format: date
+          nullable: true
+          description: When the incident occurred (optional, user-provided)
+        locationId:
+          type: string
+          format: uuid
+          description: Primary location ID (optional, can add later)
+      examples:
+        - youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+          amendments: ["FIRST", "FOURTH"]
+          participants: ["POLICE", "CITIZEN"]
+          videoDate: "2025-01-15"
+          locationId: "660e8400-e29b-41d4-a716-446655440001"
+
+    UpdateVideoRequest:
+      type: object
+      properties:
+        amendments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Amendment'
+          minItems: 1
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/Participant'
+          minItems: 1
+        videoDate:
+          type: string
+          format: date
+          nullable: true
+      examples:
+        - amendments: ["FIRST", "FOURTH", "FIFTH"]
+          videoDate: "2025-01-15"
+
+    AddVideoLocationRequest:
+      type: object
+      required: [locationId]
+      properties:
+        locationId:
+          type: string
+          format: uuid
+        isPrimary:
+          type: boolean
+          default: false
+          description: Set as primary location (will unset previous primary)
+      examples:
+        - locationId: "660e8400-e29b-41d4-a716-446655440001"
+          isPrimary: true
+
+    # Response schemas
+    VideoListResponse:
+      type: object
+      required: [content, page, totalElements, totalPages]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/VideoSummary'
+        page:
+          type: integer
+          minimum: 0
+          description: Current page number (0-indexed)
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: Page size
+        totalElements:
+          type: integer
+          minimum: 0
+          description: Total number of videos matching query
+        totalPages:
+          type: integer
+          minimum: 0
+          description: Total number of pages
+
+    VideoLocationsResponse:
+      type: object
+      required: [locations]
+      properties:
+        locations:
+          type: array
+          items:
+            $ref: '#/components/schemas/VideoLocation'
+
+    # Error schemas
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Machine-readable error code
+          examples: ["VALIDATION_ERROR", "UNAUTHORIZED", "NOT_FOUND"]
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: array
+          description: Field-level validation errors (when applicable)
+          items:
+            $ref: '#/components/schemas/FieldError'
+        traceId:
+          type: string
+          format: uuid
+          description: Correlation ID for debugging (from X-Ray)
+
+    FieldError:
+      type: object
+      required: [field, message]
+      properties:
+        field:
+          type: string
+          examples: ["youtubeUrl", "amendments"]
+        message:
+          type: string
+          examples: ["must be a valid YouTube URL"]
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters or body
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: VALIDATION_ERROR
+            message: Request validation failed
+            details:
+              - field: amendments
+                message: must contain at least one amendment
+            traceId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+
+    Unauthorized:
+      description: Missing or invalid authentication token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: UNAUTHORIZED
+            message: Access token is missing or invalid
+            traceId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+
+    Forbidden:
+      description: Authenticated but lacking required permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: FORBIDDEN
+            message: You do not have permission to modify this video
+            traceId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+
+    NotFound:
+      description: Requested resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: NOT_FOUND
+            message: Video not found
+            traceId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+
+    RateLimited:
+      description: Too many requests
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: Seconds until rate limit resets
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: RATE_LIMITED
+            message: Too many video submissions. Please retry after 60 seconds.
+            traceId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"

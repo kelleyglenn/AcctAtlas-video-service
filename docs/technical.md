@@ -35,7 +35,7 @@ The Video Service is the core content management service for AccountabilityAtlas
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [api-specification.yaml](api-specification.yaml) | Planned | OpenAPI 3.0 specification |
+| [api-specification.yaml](api-specification.yaml) | Complete | OpenAPI 3.1 specification |
 | [database-schema.md](database-schema.md) | Planned | Schema documentation |
 | [youtube-integration.md](youtube-integration.md) | Planned | YouTube API integration details |
 | [amendment-taxonomy.md](amendment-taxonomy.md) | Planned | Amendment categorization guide |
