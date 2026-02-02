@@ -1,0 +1,19 @@
+name: Lint OpenAPI Descriptions
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Lint OpenAPI spec (Spectral)
+        uses: stoplightio/spectral-action@v1
+        with:
+          file_path: 'docs/api-specification.yaml'
