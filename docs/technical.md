@@ -18,7 +18,7 @@ The Video Service is the core content management service for AccountabilityAtlas
 
 | Component | Technology |
 |-----------|------------|
-| Framework | Spring Boot 3.2.x |
+| Framework | Spring Boot 3.4.x |
 | Language | Java 21 |
 | Build | Gradle |
 | Database | PostgreSQL 15 |
