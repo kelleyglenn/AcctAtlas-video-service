@@ -9,6 +9,9 @@ build/
 .vscode/
 *.swp
 
+# Claude Code local config
+.claude/
+
 # OS
 .DS_Store
 Thumbs.db
@@ -20,3 +23,6 @@ logs/
 # Environment
 .env
 .env.local
+
+# Worktrees
+.worktrees/
