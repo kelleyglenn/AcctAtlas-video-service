@@ -73,17 +73,34 @@ enum Participant { POLICE, GOVERNMENT, BUSINESS, CITIZEN }
 
 ## API Endpoints
 
+### Public Endpoints
+
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | GET | /videos | Public | List videos (paginated, filtered) |
-| GET | /videos/{id} | Public | Get video details |
+| GET | /videos/{id} | Public* | Get video details (*visibility rules apply) |
 | POST | /videos | User | Submit new video |
-| PUT | /videos/{id} | Owner | Update video metadata |
-| DELETE | /videos/{id} | Owner/Mod | Delete video |
+| PUT | /videos/{id} | Owner | Update video metadata (non-approved only) |
+| DELETE | /videos/{id} | Owner | Delete video (non-approved only) |
 | GET | /videos/{id}/locations | Public | Get video locations |
-| POST | /videos/{id}/locations | Owner | Add location to video |
-| DELETE | /videos/{id}/locations/{locId} | Owner | Remove location |
+| POST | /videos/{id}/locations | Owner | Add location (non-approved only) |
+| DELETE | /videos/{id}/locations/{locId} | Owner | Remove location (non-approved only) |
 | GET | /videos/user/{userId} | Public | Get user's submissions |
+
+**Note:** Moderators and admins use moderation-service endpoints to modify videos.
+
+### Internal Endpoints (service-to-service)
+
+Used by moderation-service for video tweaks during review. Not exposed via API Gateway.
+
+| Method | Path | Caller | Description |
+|--------|------|--------|-------------|
+| PUT | /internal/videos/{id} | moderation-service | Update metadata (bypasses owner check) |
+| PUT | /internal/videos/{id}/status | moderation-service | Set APPROVED/REJECTED |
+| POST | /internal/videos/{id}/locations | moderation-service | Add location |
+| DELETE | /internal/videos/{id}/locations/{locId} | moderation-service | Remove location |
+
+Access controlled by IP/CIDR allowlist (internal network only).
 
 ## Query Parameters (GET /videos)
 
