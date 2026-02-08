@@ -1,0 +1,48 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: video_service
+      POSTGRES_USER: video_service
+      POSTGRES_PASSWORD: local_dev
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U video_service"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  video-service:
+    image: acctatlas/video-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/video_service
+      SPRING_DATASOURCE_USERNAME: video_service
+      SPRING_DATASOURCE_PASSWORD: local_dev
+      SPRING_DATA_REDIS_HOST: redis
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
+    profiles:
+      - app
+
+volumes:
+  pgdata:
