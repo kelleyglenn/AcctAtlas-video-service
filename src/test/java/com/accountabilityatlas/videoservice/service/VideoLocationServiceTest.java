@@ -1,7 +1,7 @@
 package com.accountabilityatlas.videoservice.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -47,36 +47,50 @@ class VideoLocationServiceTest {
   }
 
   @Test
-  void getVideoLocations_missingVideo_throws() {
+  void getVideoLocations_videoMissing_throwsNotFound() {
+    // Arrange
     when(videoRepository.existsById(videoId)).thenReturn(false);
-    assertThatThrownBy(() -> videoLocationService.getVideoLocations(videoId))
-        .isInstanceOf(VideoNotFoundException.class);
+
+    // Act
+    Throwable thrown = catchThrowable(() -> videoLocationService.getVideoLocations(videoId));
+
+    // Assert
+    assertThat(thrown).isInstanceOf(VideoNotFoundException.class);
   }
 
   @Test
-  void getVideoLocations_returnsList() {
+  void getVideoLocations_videoExists_returnsLocations() {
+    // Arrange
     when(videoRepository.existsById(videoId)).thenReturn(true);
     when(videoLocationRepository.findByVideoId(videoId)).thenReturn(List.of(new VideoLocation()));
 
+    // Act
     List<VideoLocation> result = videoLocationService.getVideoLocations(videoId);
 
+    // Assert
     assertThat(result).hasSize(1);
   }
 
   @Test
-  void addLocation_notOwner_throws() {
+  void addLocation_notOwner_throwsUnauthorized() {
+    // Arrange
     Video video = new Video();
     video.setId(videoId);
     video.setSubmittedBy(UUID.randomUUID());
     video.setStatus(VideoStatus.PENDING);
     when(videoRepository.findById(videoId)).thenReturn(Optional.of(video));
 
-    assertThatThrownBy(() -> videoLocationService.addLocation(videoId, locationId, false, userId))
-        .isInstanceOf(UnauthorizedException.class);
+    // Act
+    Throwable thrown =
+        catchThrowable(() -> videoLocationService.addLocation(videoId, locationId, false, userId));
+
+    // Assert
+    assertThat(thrown).isInstanceOf(UnauthorizedException.class);
   }
 
   @Test
-  void addLocation_alreadyLinked_throws() {
+  void addLocation_alreadyLinked_throwsConflict() {
+    // Arrange
     Video video = new Video();
     video.setId(videoId);
     video.setSubmittedBy(userId);
@@ -85,12 +99,17 @@ class VideoLocationServiceTest {
     when(videoLocationRepository.existsByVideoIdAndLocationId(videoId, locationId))
         .thenReturn(true);
 
-    assertThatThrownBy(() -> videoLocationService.addLocation(videoId, locationId, false, userId))
-        .isInstanceOf(LocationAlreadyLinkedException.class);
+    // Act
+    Throwable thrown =
+        catchThrowable(() -> videoLocationService.addLocation(videoId, locationId, false, userId));
+
+    // Assert
+    assertThat(thrown).isInstanceOf(LocationAlreadyLinkedException.class);
   }
 
   @Test
-  void addLocation_locationMissing_throws() {
+  void addLocation_locationMissing_throwsNotFound() {
+    // Arrange
     Video video = new Video();
     video.setId(videoId);
     video.setSubmittedBy(userId);
@@ -100,12 +119,17 @@ class VideoLocationServiceTest {
         .thenReturn(false);
     when(locationClient.getLocation(locationId)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> videoLocationService.addLocation(videoId, locationId, false, userId))
-        .isInstanceOf(LocationNotFoundException.class);
+    // Act
+    Throwable thrown =
+        catchThrowable(() -> videoLocationService.addLocation(videoId, locationId, false, userId));
+
+    // Assert
+    assertThat(thrown).isInstanceOf(LocationNotFoundException.class);
   }
 
   @Test
-  void addLocation_setsPrimaryAndCachesLocation() {
+  void addLocation_primaryRequested_setsPrimaryAndCaches() {
+    // Arrange
     Video video = new Video();
     video.setId(videoId);
     video.setSubmittedBy(userId);
@@ -121,42 +145,57 @@ class VideoLocationServiceTest {
     when(videoLocationRepository.save(any(VideoLocation.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
+    // Act
     VideoLocation saved = videoLocationService.addLocation(videoId, locationId, true, userId);
 
+    // Assert
     verify(videoLocationRepository).clearPrimaryForVideo(videoId);
     assertThat(saved.getDisplayName()).isEqualTo("Display");
     assertThat(saved.isPrimary()).isTrue();
   }
 
   @Test
-  void removeLocation_notOwner_throws() {
+  void removeLocation_notOwner_throwsUnauthorized() {
+    // Arrange
     Video video = new Video();
     video.setId(videoId);
     video.setSubmittedBy(UUID.randomUUID());
     video.setStatus(VideoStatus.PENDING);
     when(videoRepository.findById(videoId)).thenReturn(Optional.of(video));
 
-    assertThatThrownBy(() -> videoLocationService.removeLocation(videoId, locationId, userId))
-        .isInstanceOf(UnauthorizedException.class);
+    // Act
+    Throwable thrown =
+        catchThrowable(() -> videoLocationService.removeLocation(videoId, locationId, userId));
+
+    // Assert
+    assertThat(thrown).isInstanceOf(UnauthorizedException.class);
   }
 
   @Test
-  void removeLocationInternal_missing_throws() {
+  void removeLocationInternal_missingLink_throwsNotFound() {
+    // Arrange
     when(videoLocationRepository.findByVideoIdAndLocationId(videoId, locationId))
         .thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> videoLocationService.removeLocationInternal(videoId, locationId))
-        .isInstanceOf(LocationNotFoundException.class);
+    // Act
+    Throwable thrown =
+        catchThrowable(() -> videoLocationService.removeLocationInternal(videoId, locationId));
+
+    // Assert
+    assertThat(thrown).isInstanceOf(LocationNotFoundException.class);
   }
 
   @Test
-  void removeLocationInternal_deletes() {
+  void removeLocationInternal_existingLink_deletesLocation() {
+    // Arrange
     VideoLocation location = new VideoLocation();
     when(videoLocationRepository.findByVideoIdAndLocationId(videoId, locationId))
         .thenReturn(Optional.of(location));
 
+    // Act
     videoLocationService.removeLocationInternal(videoId, locationId);
 
+    // Assert
     verify(videoLocationRepository).delete(location);
   }
 }

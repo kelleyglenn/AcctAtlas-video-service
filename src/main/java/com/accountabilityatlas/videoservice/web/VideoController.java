@@ -33,12 +33,25 @@ public class VideoController implements VideosApi, VideoLocationsApi {
   private final VideoService videoService;
   private final VideoLocationService videoLocationService;
 
+  /**
+   * Fetch a single video by id, enforcing visibility rules based on the caller's identity and trust
+   * tier.
+   */
   @Override
   public ResponseEntity<VideoDetail> getVideo(UUID id) {
     Video video = videoService.getVideo(id);
+    UUID currentUserId = getCurrentUserIdOrNull();
+    String trustTier = getCurrentTrustTierOrNull();
+    if (!videoService.canView(video, currentUserId, trustTier)) {
+      throw new UnauthorizedException("You do not have permission to view this video");
+    }
     return ResponseEntity.ok(toVideoDetail(video));
   }
 
+  /**
+   * List videos with paging and sorting, clamping visibility for anonymous or non-moderator callers
+   * to approved content.
+   */
   @Override
   public ResponseEntity<VideoListResponse> listVideos(
       com.accountabilityatlas.videoservice.web.model.VideoStatus status,
@@ -60,7 +73,14 @@ public class VideoController implements VideosApi, VideoLocationsApi {
 
     VideoStatus domainStatus = status != null ? VideoStatus.valueOf(status.name()) : null;
     UUID currentUserId = getCurrentUserIdOrNull();
-    if (submittedBy != null && !submittedBy.equals(currentUserId)) {
+    String trustTier = getCurrentTrustTierOrNull();
+    boolean isModeratorOrAdmin = "MODERATOR".equals(trustTier) || "ADMIN".equals(trustTier);
+
+    if (submittedBy != null) {
+      if (!submittedBy.equals(currentUserId) && !isModeratorOrAdmin) {
+        domainStatus = VideoStatus.APPROVED;
+      }
+    } else if (!isModeratorOrAdmin) {
       domainStatus = VideoStatus.APPROVED;
     }
 
@@ -72,6 +92,7 @@ public class VideoController implements VideosApi, VideoLocationsApi {
     return ResponseEntity.ok(toVideoListResponse(videos));
   }
 
+  /** List videos submitted by a specific user. Non-owners are restricted to approved content. */
   @Override
   public ResponseEntity<VideoListResponse> getVideosByUser(
       UUID userId,
@@ -95,6 +116,7 @@ public class VideoController implements VideosApi, VideoLocationsApi {
     return ResponseEntity.ok(toVideoListResponse(videos));
   }
 
+  /** Create a new video submission for the authenticated user and optionally attach a location. */
   @Override
   public ResponseEntity<VideoDetail> createVideo(CreateVideoRequest request) {
     UUID userId = requireCurrentUserId();
@@ -118,6 +140,7 @@ public class VideoController implements VideosApi, VideoLocationsApi {
     return ResponseEntity.status(HttpStatus.CREATED).body(toVideoDetail(video));
   }
 
+  /** Update an existing video owned by the authenticated user. */
   @Override
   public ResponseEntity<VideoDetail> updateVideo(UUID id, UpdateVideoRequest request) {
     UUID userId = requireCurrentUserId();
@@ -141,6 +164,7 @@ public class VideoController implements VideosApi, VideoLocationsApi {
     return ResponseEntity.ok(toVideoDetail(video));
   }
 
+  /** Delete a video owned by the authenticated user. */
   @Override
   public ResponseEntity<Void> deleteVideo(UUID id) {
     UUID userId = requireCurrentUserId();
@@ -148,12 +172,14 @@ public class VideoController implements VideosApi, VideoLocationsApi {
     return ResponseEntity.noContent().build();
   }
 
+  /** Fetch locations linked to a video by id. */
   @Override
   public ResponseEntity<VideoLocationsResponse> getVideoLocations(UUID id) {
     List<VideoLocation> locations = videoLocationService.getVideoLocations(id);
     return ResponseEntity.ok(toVideoLocationsResponse(locations));
   }
 
+  /** Add a location link to a video owned by the authenticated user. */
   @Override
   public ResponseEntity<com.accountabilityatlas.videoservice.web.model.VideoLocation>
       addVideoLocation(UUID id, AddVideoLocationRequest request) {
@@ -166,6 +192,7 @@ public class VideoController implements VideosApi, VideoLocationsApi {
     return ResponseEntity.status(HttpStatus.CREATED).body(toVideoLocationModel(location));
   }
 
+  /** Remove a location link from a video owned by the authenticated user. */
   @Override
   public ResponseEntity<Void> removeVideoLocation(UUID id, UUID locationId) {
     UUID userId = requireCurrentUserId();
@@ -173,6 +200,7 @@ public class VideoController implements VideosApi, VideoLocationsApi {
     return ResponseEntity.noContent().build();
   }
 
+  /** Map a domain video to the detailed API model. */
   private VideoDetail toVideoDetail(Video video) {
     VideoDetail detail = new VideoDetail();
     detail.setId(video.getId());
@@ -205,6 +233,7 @@ public class VideoController implements VideosApi, VideoLocationsApi {
     return detail;
   }
 
+  /** Convert a page of domain videos to a list response with paging metadata. */
   private VideoListResponse toVideoListResponse(Page<Video> page) {
     VideoListResponse response = new VideoListResponse();
     response.setContent(page.getContent().stream().map(this::toVideoSummary).toList());
@@ -215,6 +244,7 @@ public class VideoController implements VideosApi, VideoLocationsApi {
     return response;
   }
 
+  /** Map a domain video to the summary API model used in lists. */
   private VideoSummary toVideoSummary(Video video) {
     VideoSummary summary = new VideoSummary();
     summary.setId(video.getId());
@@ -237,6 +267,7 @@ public class VideoController implements VideosApi, VideoLocationsApi {
     return summary;
   }
 
+  /** Map a domain location link to the API model, including a summary if present. */
   private com.accountabilityatlas.videoservice.web.model.VideoLocation toVideoLocationModel(
       VideoLocation location) {
     var model = new com.accountabilityatlas.videoservice.web.model.VideoLocation();
@@ -263,12 +294,14 @@ public class VideoController implements VideosApi, VideoLocationsApi {
     return model;
   }
 
+  /** Convert a list of domain location links to the list response model. */
   private VideoLocationsResponse toVideoLocationsResponse(List<VideoLocation> locations) {
     VideoLocationsResponse response = new VideoLocationsResponse();
     response.setLocations(locations.stream().map(this::toVideoLocationModel).toList());
     return response;
   }
 
+  /** Return the current user's id or throw if unauthenticated. */
   private UUID requireCurrentUserId() {
     UUID userId = getCurrentUserIdOrNull();
     if (userId == null) {
@@ -277,6 +310,7 @@ public class VideoController implements VideosApi, VideoLocationsApi {
     return userId;
   }
 
+  /** Return the current user's id from the JWT, or null when unauthenticated. */
   private UUID getCurrentUserIdOrNull() {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
@@ -285,6 +319,16 @@ public class VideoController implements VideosApi, VideoLocationsApi {
     return UUID.fromString(jwt.getSubject());
   }
 
+  /** Return the current user's trust tier from the JWT, or null when unauthenticated. */
+  private String getCurrentTrustTierOrNull() {
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
+      return null;
+    }
+    return jwt.getClaimAsString("trustTier");
+  }
+
+  /** Safely parse a string into a URI, returning null for blank or invalid values. */
   private URI toUriOrNull(String value) {
     if (value == null || value.isBlank()) {
       return null;

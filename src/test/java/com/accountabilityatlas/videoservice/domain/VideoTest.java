@@ -7,17 +7,22 @@ import org.junit.jupiter.api.Test;
 class VideoTest {
 
   @Test
-  void addAndRemoveLocation_updatesRelationship() {
+  void addAndRemoveLocation_validCalls_updatesRelationship() {
+    // Arrange
     Video video = new Video();
     VideoLocation location = new VideoLocation();
 
+    // Act
     video.addLocation(location);
 
+    // Assert
     assertThat(video.getLocations()).containsExactly(location);
     assertThat(location.getVideo()).isSameAs(video);
 
+    // Act
     video.removeLocation(location);
 
+    // Assert
     assertThat(video.getLocations()).isEmpty();
     assertThat(location.getVideo()).isNull();
   }

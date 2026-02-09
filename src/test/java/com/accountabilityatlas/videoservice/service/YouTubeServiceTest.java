@@ -1,7 +1,7 @@
 package com.accountabilityatlas.videoservice.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 import com.accountabilityatlas.videoservice.config.YouTubeProperties;
 import com.accountabilityatlas.videoservice.exception.InvalidYouTubeUrlException;
@@ -18,57 +18,102 @@ class YouTubeServiceTest {
 
   @BeforeEach
   void setUp() {
+    // Arrange
     YouTubeProperties properties = new YouTubeProperties();
     properties.setApiKey("test-key");
+
+    // Act
     youTubeService = new YouTubeService(WebClient.builder(), properties);
   }
 
   @Test
-  void extractVideoId_standardUrl() {
+  void extractVideoId_standardUrl_returnsId() {
+    // Arrange
     String url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
-    assertThat(youTubeService.extractVideoId(url)).isEqualTo("dQw4w9WgXcQ");
+
+    // Act
+    String result = youTubeService.extractVideoId(url);
+
+    // Assert
+    assertThat(result).isEqualTo("dQw4w9WgXcQ");
   }
 
   @Test
-  void extractVideoId_shortUrl() {
+  void extractVideoId_shortUrl_returnsId() {
+    // Arrange
     String url = "https://youtu.be/dQw4w9WgXcQ";
-    assertThat(youTubeService.extractVideoId(url)).isEqualTo("dQw4w9WgXcQ");
+
+    // Act
+    String result = youTubeService.extractVideoId(url);
+
+    // Assert
+    assertThat(result).isEqualTo("dQw4w9WgXcQ");
   }
 
   @Test
-  void extractVideoId_embedUrl() {
+  void extractVideoId_embedUrl_returnsId() {
+    // Arrange
     String url = "https://www.youtube.com/embed/dQw4w9WgXcQ";
-    assertThat(youTubeService.extractVideoId(url)).isEqualTo("dQw4w9WgXcQ");
+
+    // Act
+    String result = youTubeService.extractVideoId(url);
+
+    // Assert
+    assertThat(result).isEqualTo("dQw4w9WgXcQ");
   }
 
   @Test
-  void extractVideoId_withQueryParams() {
+  void extractVideoId_queryParams_returnsId() {
+    // Arrange
     String url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=120";
-    assertThat(youTubeService.extractVideoId(url)).isEqualTo("dQw4w9WgXcQ");
+
+    // Act
+    String result = youTubeService.extractVideoId(url);
+
+    // Assert
+    assertThat(result).isEqualTo("dQw4w9WgXcQ");
   }
 
   @Test
-  void extractVideoId_invalidUrl_throws() {
+  void extractVideoId_invalidUrl_throwsException() {
+    // Arrange
     String url = "https://vimeo.com/123456";
-    assertThatThrownBy(() -> youTubeService.extractVideoId(url))
+
+    // Act
+    Throwable thrown = catchThrowable(() -> youTubeService.extractVideoId(url));
+
+    // Assert
+    assertThat(thrown)
         .isInstanceOf(InvalidYouTubeUrlException.class)
         .hasMessageContaining("Invalid YouTube URL");
   }
 
   @Test
-  void extractVideoId_nullUrl_throws() {
-    assertThatThrownBy(() -> youTubeService.extractVideoId(null))
-        .isInstanceOf(InvalidYouTubeUrlException.class);
+  void extractVideoId_nullUrl_throwsException() {
+    // Arrange
+
+    // Act
+    Throwable thrown = catchThrowable(() -> youTubeService.extractVideoId(null));
+
+    // Assert
+    assertThat(thrown).isInstanceOf(InvalidYouTubeUrlException.class);
   }
 
   @Test
-  void extractVideoId_blankUrl_throws() {
-    assertThatThrownBy(() -> youTubeService.extractVideoId("  "))
-        .isInstanceOf(InvalidYouTubeUrlException.class);
+  void extractVideoId_blankUrl_throwsException() {
+    // Arrange
+    String url = "  ";
+
+    // Act
+    Throwable thrown = catchThrowable(() -> youTubeService.extractVideoId(url));
+
+    // Assert
+    assertThat(thrown).isInstanceOf(InvalidYouTubeUrlException.class);
   }
 
   @Test
-  void fetchMetadata_parsesResponse() throws Exception {
+  void fetchMetadata_validResponse_parsesMetadata() throws Exception {
+    // Arrange
     try (MockWebServer server = new MockWebServer()) {
       server.enqueue(
           new MockResponse()
@@ -99,8 +144,10 @@ class YouTubeServiceTest {
       properties.setBaseUrl(server.url("/").toString());
       YouTubeService service = new YouTubeService(WebClient.builder(), properties);
 
+      // Act
       var metadata = service.fetchMetadata("abc123def45");
 
+      // Assert
       assertThat(metadata.videoId()).isEqualTo("abc123def45");
       assertThat(metadata.title()).isEqualTo("Title");
       assertThat(metadata.thumbnailUrl()).isEqualTo("http://thumb");

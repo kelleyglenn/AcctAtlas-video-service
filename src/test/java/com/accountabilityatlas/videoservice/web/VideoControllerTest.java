@@ -1,7 +1,7 @@
 package com.accountabilityatlas.videoservice.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anySet;
@@ -64,19 +64,53 @@ class VideoControllerTest {
   }
 
   @Test
-  void getVideo_mapsDetail() {
+  void getVideo_visibleVideo_mapsDetail() {
+    // Arrange
     Video video = sampleVideo();
     when(videoService.getVideo(video.getId())).thenReturn(video);
+    when(videoService.canView(eq(video), any(), any())).thenReturn(true);
 
+    // Act
     VideoDetail detail = videoController.getVideo(video.getId()).getBody();
 
+    // Assert
     assertThat(detail.getId()).isEqualTo(video.getId());
     assertThat(detail.getYoutubeId()).isEqualTo(video.getYoutubeId());
     assertThat(detail.getThumbnailUrl()).isEqualTo(URI.create(video.getThumbnailUrl()));
   }
 
   @Test
-  void listVideos_usesApprovedForOtherUsers() {
+  void getVideo_notAllowed_throwsUnauthorized() {
+    // Arrange
+    Video video = sampleVideo();
+    when(videoService.getVideo(video.getId())).thenReturn(video);
+    when(videoService.canView(eq(video), any(), any())).thenReturn(false);
+
+    // Act
+    Throwable thrown = catchThrowable(() -> videoController.getVideo(video.getId()));
+
+    // Assert
+    assertThat(thrown).isInstanceOf(UnauthorizedException.class);
+  }
+
+  @Test
+  void getVideo_trustTierInJwt_mapsDetail() {
+    // Arrange
+    setAuthWithTrustTier("ADMIN");
+    Video video = sampleVideo();
+    when(videoService.getVideo(video.getId())).thenReturn(video);
+    when(videoService.canView(eq(video), eq(userId), eq("ADMIN"))).thenReturn(true);
+
+    // Act
+    VideoDetail detail = videoController.getVideo(video.getId()).getBody();
+
+    // Assert
+    assertThat(detail.getId()).isEqualTo(video.getId());
+  }
+
+  @Test
+  void listVideos_submittedByOtherUser_clampsToApproved() {
+    // Arrange
     Video video = sampleVideo();
     Page<Video> page = new PageImpl<>(List.of(video), PageRequest.of(0, 20), 1);
     UUID submittedBy = UUID.randomUUID();
@@ -84,39 +118,135 @@ class VideoControllerTest {
             eq(submittedBy), eq(VideoStatus.APPROVED), any(PageRequest.class)))
         .thenReturn(page);
 
+    // Act
     var response =
         videoController.listVideos(null, null, null, submittedBy, 0, 20, "createdAt", "desc");
 
+    // Assert
     assertThat(response.getBody().getContent()).hasSize(1);
   }
 
   @Test
-  void getVideosByUser_ownerCanSeeAllStatuses() {
+  void listVideos_anonymousRequest_clampsToApproved() {
+    // Arrange
+    Video video = sampleVideo();
+    Page<Video> page = new PageImpl<>(List.of(video), PageRequest.of(0, 20), 1);
+    when(videoService.listVideos(eq(VideoStatus.APPROVED), any(PageRequest.class)))
+        .thenReturn(page);
+
+    // Act
+    var response = videoController.listVideos(null, null, null, null, 0, 20, null, null);
+
+    // Assert
+    assertThat(response.getBody().getContent()).hasSize(1);
+  }
+
+  @Test
+  void listVideos_nonModeratorRequestedStatus_clampsToApproved() {
+    // Arrange
+    setAuthWithTrustTier("TRUSTED");
+    Video video = sampleVideo();
+    Page<Video> page = new PageImpl<>(List.of(video), PageRequest.of(0, 20), 1);
+    when(videoService.listVideos(eq(VideoStatus.APPROVED), any(PageRequest.class)))
+        .thenReturn(page);
+
+    // Act
+    var response =
+        videoController.listVideos(
+            com.accountabilityatlas.videoservice.web.model.VideoStatus.PENDING,
+            null,
+            null,
+            null,
+            0,
+            20,
+            "createdAt",
+            "desc");
+
+    // Assert
+    assertThat(response.getBody().getContent()).hasSize(1);
+  }
+
+  @Test
+  void listVideos_moderatorRequestedStatus_usesRequestedStatus() {
+    // Arrange
+    setAuthWithTrustTier("MODERATOR");
+    Video video = sampleVideo();
+    Page<Video> page = new PageImpl<>(List.of(video), PageRequest.of(0, 20), 1);
+    when(videoService.listVideos(eq(VideoStatus.PENDING), any(PageRequest.class))).thenReturn(page);
+
+    // Act
+    var response =
+        videoController.listVideos(
+            com.accountabilityatlas.videoservice.web.model.VideoStatus.PENDING,
+            null,
+            null,
+            null,
+            0,
+            20,
+            "createdAt",
+            "desc");
+
+    // Assert
+    assertThat(response.getBody().getContent()).hasSize(1);
+  }
+
+  @Test
+  void getVideosByUser_ownerRequest_returnsAllStatuses() {
+    // Arrange
     setAuth();
     Video video = sampleVideo();
     Page<Video> page = new PageImpl<>(List.of(video), PageRequest.of(0, 20), 1);
     when(videoService.listVideosByUser(eq(userId), isNull(), any(PageRequest.class)))
         .thenReturn(page);
 
+    // Act
     var response = videoController.getVideosByUser(userId, null, 0, 20);
 
+    // Assert
     assertThat(response.getBody().getContent()).hasSize(1);
   }
 
   @Test
-  void createVideo_requiresAuth() {
+  void getVideosByUser_nonOwnerRequestedStatus_clampsToApproved() {
+    // Arrange
+    UUID targetUserId = UUID.randomUUID();
+    Video video = sampleVideo();
+    Page<Video> page = new PageImpl<>(List.of(video), PageRequest.of(0, 20), 1);
+    when(videoService.listVideosByUser(
+            eq(targetUserId), eq(VideoStatus.APPROVED), any(PageRequest.class)))
+        .thenReturn(page);
+
+    // Act
+    var response =
+        videoController.getVideosByUser(
+            targetUserId,
+            com.accountabilityatlas.videoservice.web.model.VideoStatus.PENDING,
+            0,
+            20);
+
+    // Assert
+    assertThat(response.getBody().getContent()).hasSize(1);
+  }
+
+  @Test
+  void createVideo_unauthenticated_throwsUnauthorized() {
+    // Arrange
     CreateVideoRequest request = new CreateVideoRequest();
     request.setYoutubeUrl(URI.create("https://youtu.be/dQw4w9WgXcQ"));
     request.setAmendments(List.of(com.accountabilityatlas.videoservice.web.model.Amendment.FIRST));
     request.setParticipants(
         List.of(com.accountabilityatlas.videoservice.web.model.Participant.POLICE));
 
-    assertThatThrownBy(() -> videoController.createVideo(request))
-        .isInstanceOf(UnauthorizedException.class);
+    // Act
+    Throwable thrown = catchThrowable(() -> videoController.createVideo(request));
+
+    // Assert
+    assertThat(thrown).isInstanceOf(UnauthorizedException.class);
   }
 
   @Test
-  void createVideo_createsAndMaps() {
+  void createVideo_authenticated_mapsDetail() {
+    // Arrange
     setAuth();
     CreateVideoRequest request = new CreateVideoRequest();
     request.setYoutubeUrl(URI.create("https://youtu.be/dQw4w9WgXcQ"));
@@ -128,15 +258,18 @@ class VideoControllerTest {
     Video video = sampleVideo();
     when(videoService.createVideo(any(), anySet(), anySet(), any(), any())).thenReturn(video);
 
+    // Act
     VideoDetail detail = videoController.createVideo(request).getBody();
 
+    // Assert
     assertThat(detail.getId()).isEqualTo(video.getId());
     verify(videoService)
         .createVideo(eq(request.getYoutubeUrl().toString()), anySet(), anySet(), any(), eq(userId));
   }
 
   @Test
-  void updateVideo_updates() {
+  void updateVideo_authenticated_mapsDetail() {
+    // Arrange
     setAuth();
     UpdateVideoRequest request = new UpdateVideoRequest();
     request.setAmendments(List.of(com.accountabilityatlas.videoservice.web.model.Amendment.FOURTH));
@@ -146,23 +279,29 @@ class VideoControllerTest {
     Video video = sampleVideo();
     when(videoService.updateVideo(any(), any(), any(), any(), any())).thenReturn(video);
 
+    // Act
     VideoDetail detail = videoController.updateVideo(video.getId(), request).getBody();
 
+    // Assert
     assertThat(detail.getId()).isEqualTo(video.getId());
   }
 
   @Test
-  void deleteVideo_removes() {
+  void deleteVideo_authenticated_deletesVideo() {
+    // Arrange
     setAuth();
     Video video = sampleVideo();
 
+    // Act
     videoController.deleteVideo(video.getId());
 
+    // Assert
     verify(videoService).deleteVideo(video.getId(), userId);
   }
 
   @Test
-  void getVideoLocations_mapsResponse() {
+  void getVideoLocations_existingVideo_mapsResponse() {
+    // Arrange
     VideoLocation location = new VideoLocation();
     location.setId(UUID.randomUUID());
     location.setLocationId(UUID.randomUUID());
@@ -178,23 +317,31 @@ class VideoControllerTest {
 
     when(videoLocationService.getVideoLocations(video.getId())).thenReturn(List.of(location));
 
+    // Act
     VideoLocationsResponse response = videoController.getVideoLocations(video.getId()).getBody();
 
+    // Assert
     assertThat(response.getLocations()).hasSize(1);
     assertThat(response.getLocations().get(0).getLocation().getDisplayName()).isEqualTo("Display");
   }
 
   @Test
-  void addVideoLocation_requiresAuth() {
+  void addVideoLocation_unauthenticated_throwsUnauthorized() {
+    // Arrange
     AddVideoLocationRequest request = new AddVideoLocationRequest();
     request.setLocationId(UUID.randomUUID());
 
-    assertThatThrownBy(() -> videoController.addVideoLocation(UUID.randomUUID(), request))
-        .isInstanceOf(UnauthorizedException.class);
+    // Act
+    Throwable thrown =
+        catchThrowable(() -> videoController.addVideoLocation(UUID.randomUUID(), request));
+
+    // Assert
+    assertThat(thrown).isInstanceOf(UnauthorizedException.class);
   }
 
   @Test
-  void addVideoLocation_creates() {
+  void addVideoLocation_authenticated_createsLocation() {
+    // Arrange
     setAuth();
     AddVideoLocationRequest request = new AddVideoLocationRequest();
     request.setLocationId(UUID.randomUUID());
@@ -208,24 +355,38 @@ class VideoControllerTest {
 
     when(videoLocationService.addLocation(any(), any(), anyBoolean(), any())).thenReturn(location);
 
+    // Act
     var response = videoController.addVideoLocation(video.getId(), request);
 
+    // Assert
     assertThat(response.getBody().getLocationId()).isEqualTo(request.getLocationId());
   }
 
   @Test
-  void removeVideoLocation_requiresAuth() {
-    assertThatThrownBy(
-            () -> videoController.removeVideoLocation(UUID.randomUUID(), UUID.randomUUID()))
-        .isInstanceOf(UnauthorizedException.class);
+  void removeVideoLocation_unauthenticated_throwsUnauthorized() {
+    // Arrange
+    UUID videoId = UUID.randomUUID();
+    UUID locationId = UUID.randomUUID();
+
+    // Act
+    Throwable thrown =
+        catchThrowable(() -> videoController.removeVideoLocation(videoId, locationId));
+
+    // Assert
+    assertThat(thrown).isInstanceOf(UnauthorizedException.class);
   }
 
   private void setAuth() {
+    setAuthWithTrustTier(null);
+  }
+
+  private void setAuthWithTrustTier(String trustTier) {
     Jwt jwt =
         Jwt.withTokenValue("token")
             .header("alg", "none")
             .subject(userId.toString())
             .claim("sub", userId.toString())
+            .claim("trustTier", trustTier)
             .build();
     SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
   }

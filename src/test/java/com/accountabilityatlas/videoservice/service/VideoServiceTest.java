@@ -1,7 +1,7 @@
 package com.accountabilityatlas.videoservice.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -50,59 +50,79 @@ class VideoServiceTest {
   }
 
   @Test
-  void getVideo_missing_throws() {
+  void getVideo_missingId_throwsNotFound() {
+    // Arrange
     when(videoRepository.findById(videoId)).thenReturn(Optional.empty());
-    assertThatThrownBy(() -> videoService.getVideo(videoId))
-        .isInstanceOf(VideoNotFoundException.class);
+
+    // Act
+    Throwable thrown = catchThrowable(() -> videoService.getVideo(videoId));
+
+    // Assert
+    assertThat(thrown).isInstanceOf(VideoNotFoundException.class);
   }
 
   @Test
-  void listVideos_defaultsToApproved() {
+  void listVideos_statusNull_defaultsToApproved() {
+    // Arrange
     PageRequest pageable = PageRequest.of(0, 20);
     when(videoRepository.findByStatusOrderByCreatedAtDesc(VideoStatus.APPROVED, pageable))
         .thenReturn(Page.empty());
 
+    // Act
     Page<Video> result = videoService.listVideos(null, pageable);
 
+    // Assert
     assertThat(result.getTotalElements()).isEqualTo(0);
     verify(videoRepository).findByStatusOrderByCreatedAtDesc(VideoStatus.APPROVED, pageable);
   }
 
   @Test
-  void listVideosByUser_withStatus() {
+  void listVideosByUser_statusProvided_usesStatusFilter() {
+    // Arrange
     PageRequest pageable = PageRequest.of(0, 20);
     when(videoRepository.findBySubmittedByAndStatus(userId, VideoStatus.PENDING, pageable))
         .thenReturn(Page.empty());
 
+    // Act
     videoService.listVideosByUser(userId, VideoStatus.PENDING, pageable);
 
+    // Assert
     verify(videoRepository).findBySubmittedByAndStatus(userId, VideoStatus.PENDING, pageable);
   }
 
   @Test
-  void listVideosByUser_withoutStatus() {
+  void listVideosByUser_statusMissing_listsAll() {
+    // Arrange
     PageRequest pageable = PageRequest.of(0, 20);
     when(videoRepository.findBySubmittedBy(userId, pageable)).thenReturn(Page.empty());
 
+    // Act
     videoService.listVideosByUser(userId, null, pageable);
 
+    // Assert
     verify(videoRepository).findBySubmittedBy(userId, pageable);
   }
 
   @Test
-  void createVideo_duplicateYoutubeId_throws() {
+  void createVideo_youtubeIdExists_throwsAlreadyExists() {
+    // Arrange
     when(youTubeService.extractVideoId("url")).thenReturn("abc123def45");
     when(videoRepository.existsByYoutubeId("abc123def45")).thenReturn(true);
 
-    assertThatThrownBy(
+    // Act
+    Throwable thrown =
+        catchThrowable(
             () ->
                 videoService.createVideo(
-                    "url", Set.of(Amendment.FIRST), Set.of(Participant.POLICE), null, userId))
-        .isInstanceOf(VideoAlreadyExistsException.class);
+                    "url", Set.of(Amendment.FIRST), Set.of(Participant.POLICE), null, userId));
+
+    // Assert
+    assertThat(thrown).isInstanceOf(VideoAlreadyExistsException.class);
   }
 
   @Test
-  void createVideo_savesMetadata() {
+  void createVideo_validRequest_savesMetadataAndSetsPending() {
+    // Arrange
     when(youTubeService.extractVideoId("url")).thenReturn("abc123def45");
     when(videoRepository.existsByYoutubeId("abc123def45")).thenReturn(false);
 
@@ -120,6 +140,7 @@ class VideoServiceTest {
     when(videoRepository.save(any(Video.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
+    // Act
     Video created =
         videoService.createVideo(
             "url",
@@ -128,6 +149,7 @@ class VideoServiceTest {
             LocalDate.of(2024, 1, 2),
             userId);
 
+    // Assert
     assertThat(created.getYoutubeId()).isEqualTo("abc123def45");
     assertThat(created.getTitle()).isEqualTo("Title");
     assertThat(created.getStatus()).isEqualTo(VideoStatus.PENDING);
@@ -135,26 +157,32 @@ class VideoServiceTest {
   }
 
   @Test
-  void updateVideo_notOwner_throws() {
+  void updateVideo_notOwner_throwsUnauthorized() {
+    // Arrange
     Video video = new Video();
     video.setId(videoId);
     video.setSubmittedBy(UUID.randomUUID());
     video.setStatus(VideoStatus.PENDING);
     when(videoRepository.findById(videoId)).thenReturn(Optional.of(video));
 
-    assertThatThrownBy(
+    // Act
+    Throwable thrown =
+        catchThrowable(
             () ->
                 videoService.updateVideo(
                     videoId,
                     Set.of(Amendment.FOURTH),
                     Set.of(Participant.CITIZEN),
                     LocalDate.now(java.time.ZoneId.of("UTC")),
-                    userId))
-        .isInstanceOf(UnauthorizedException.class);
+                    userId));
+
+    // Assert
+    assertThat(thrown).isInstanceOf(UnauthorizedException.class);
   }
 
   @Test
-  void updateVideo_updatesFields() {
+  void updateVideo_owner_updatesFields() {
+    // Arrange
     Video video = new Video();
     video.setId(videoId);
     video.setSubmittedBy(userId);
@@ -163,6 +191,7 @@ class VideoServiceTest {
     when(videoRepository.save(any(Video.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
+    // Act
     Video updated =
         videoService.updateVideo(
             videoId,
@@ -171,27 +200,48 @@ class VideoServiceTest {
             LocalDate.of(2024, 2, 2),
             userId);
 
+    // Assert
     assertThat(updated.getAmendments()).containsExactly(Amendment.SECOND);
     assertThat(updated.getParticipants()).containsExactly(Participant.GOVERNMENT);
     assertThat(updated.getVideoDate()).isEqualTo(LocalDate.of(2024, 2, 2));
   }
 
   @Test
-  void deleteVideo_setsDeleted() {
+  void deleteVideo_owner_setsDeletedStatus() {
+    // Arrange
     Video video = new Video();
     video.setId(videoId);
     video.setSubmittedBy(userId);
     video.setStatus(VideoStatus.PENDING);
     when(videoRepository.findById(videoId)).thenReturn(Optional.of(video));
 
+    // Act
     videoService.deleteVideo(videoId, userId);
 
+    // Assert
     verify(videoRepository).save(videoCaptor.capture());
     assertThat(videoCaptor.getValue().getStatus()).isEqualTo(VideoStatus.DELETED);
   }
 
   @Test
-  void updateVideoInternal_updatesFields() {
+  void deleteVideo_notOwner_throwsUnauthorized() {
+    // Arrange
+    Video video = new Video();
+    video.setId(videoId);
+    video.setSubmittedBy(UUID.randomUUID());
+    video.setStatus(VideoStatus.PENDING);
+    when(videoRepository.findById(videoId)).thenReturn(Optional.of(video));
+
+    // Act
+    Throwable thrown = catchThrowable(() -> videoService.deleteVideo(videoId, userId));
+
+    // Assert
+    assertThat(thrown).isInstanceOf(UnauthorizedException.class);
+  }
+
+  @Test
+  void updateVideoInternal_validRequest_updatesFields() {
+    // Arrange
     Video video = new Video();
     video.setId(videoId);
     video.setSubmittedBy(userId);
@@ -200,6 +250,7 @@ class VideoServiceTest {
     when(videoRepository.save(any(Video.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
+    // Act
     Video updated =
         videoService.updateVideoInternal(
             videoId,
@@ -207,26 +258,31 @@ class VideoServiceTest {
             Set.of(Participant.BUSINESS),
             LocalDate.of(2023, 3, 3));
 
+    // Assert
     assertThat(updated.getAmendments()).containsExactly(Amendment.FIRST);
     assertThat(updated.getParticipants()).containsExactly(Participant.BUSINESS);
     assertThat(updated.getVideoDate()).isEqualTo(LocalDate.of(2023, 3, 3));
   }
 
   @Test
-  void updateVideoStatus_updates() {
+  void updateVideoStatus_validRequest_updatesStatus() {
+    // Arrange
     Video video = new Video();
     video.setId(videoId);
     when(videoRepository.findById(videoId)).thenReturn(Optional.of(video));
     when(videoRepository.save(any(Video.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
+    // Act
     Video updated = videoService.updateVideoStatus(videoId, VideoStatus.APPROVED);
 
+    // Assert
     assertThat(updated.getStatus()).isEqualTo(VideoStatus.APPROVED);
   }
 
   @Test
-  void canView_rules() {
+  void canView_variousStatuses_appliesVisibilityRules() {
+    // Arrange
     Video approved = new Video();
     approved.setStatus(VideoStatus.APPROVED);
 
@@ -234,14 +290,31 @@ class VideoServiceTest {
     pending.setStatus(VideoStatus.PENDING);
     pending.setSubmittedBy(userId);
 
+    Video rejected = new Video();
+    rejected.setStatus(VideoStatus.REJECTED);
+    rejected.setSubmittedBy(userId);
+
     Video deleted = new Video();
     deleted.setStatus(VideoStatus.DELETED);
 
-    assertThat(videoService.canView(approved, null, null)).isTrue();
-    assertThat(videoService.canView(pending, userId, null)).isTrue();
-    assertThat(videoService.canView(pending, null, "MODERATOR")).isTrue();
-    assertThat(videoService.canView(pending, null, "USER")).isFalse();
-    assertThat(videoService.canView(deleted, null, "ADMIN")).isTrue();
-    assertThat(videoService.canView(deleted, null, "MODERATOR")).isFalse();
+    // Act
+    boolean approvedVisible = videoService.canView(approved, null, null);
+    boolean pendingVisibleToOwner = videoService.canView(pending, userId, null);
+    boolean pendingVisibleToModerator = videoService.canView(pending, null, "MODERATOR");
+    boolean pendingVisibleToUser = videoService.canView(pending, null, "USER");
+    boolean rejectedVisibleToOwner = videoService.canView(rejected, userId, null);
+    boolean rejectedVisibleToUser = videoService.canView(rejected, null, "USER");
+    boolean deletedVisibleToAdmin = videoService.canView(deleted, null, "ADMIN");
+    boolean deletedVisibleToModerator = videoService.canView(deleted, null, "MODERATOR");
+
+    // Assert
+    assertThat(approvedVisible).isTrue();
+    assertThat(pendingVisibleToOwner).isTrue();
+    assertThat(pendingVisibleToModerator).isTrue();
+    assertThat(pendingVisibleToUser).isFalse();
+    assertThat(rejectedVisibleToOwner).isTrue();
+    assertThat(rejectedVisibleToUser).isFalse();
+    assertThat(deletedVisibleToAdmin).isTrue();
+    assertThat(deletedVisibleToModerator).isFalse();
   }
 }

@@ -30,7 +30,8 @@ class InternalVideoControllerTest {
   @InjectMocks private InternalVideoController controller;
 
   @Test
-  void updateVideo_callsService() {
+  void updateVideo_validRequest_callsService() {
+    // Arrange
     UUID id = UUID.randomUUID();
     Video video = new Video();
     when(videoService.updateVideoInternal(eq(id), anySet(), anySet(), any())).thenReturn(video);
@@ -39,27 +40,33 @@ class InternalVideoControllerTest {
         new InternalVideoController.UpdateVideoRequest(
             Set.of("FIRST"), Set.of("POLICE"), LocalDate.of(2024, 1, 1));
 
+    // Act
     Video response = controller.updateVideo(id, request).getBody();
 
+    // Assert
     assertThat(response).isSameAs(video);
     verify(videoService).updateVideoInternal(eq(id), anySet(), anySet(), any());
   }
 
   @Test
-  void updateStatus_callsService() {
+  void updateStatus_validRequest_callsService() {
+    // Arrange
     UUID id = UUID.randomUUID();
     Video video = new Video();
     when(videoService.updateVideoStatus(id, VideoStatus.APPROVED)).thenReturn(video);
 
     var request = new InternalVideoController.UpdateStatusRequest("APPROVED");
 
+    // Act
     Video response = controller.updateStatus(id, request).getBody();
 
+    // Assert
     assertThat(response).isSameAs(video);
   }
 
   @Test
-  void addLocation_callsService() {
+  void addLocation_validRequest_callsService() {
+    // Arrange
     UUID id = UUID.randomUUID();
     UUID locationId = UUID.randomUUID();
     VideoLocation location = new VideoLocation();
@@ -67,19 +74,24 @@ class InternalVideoControllerTest {
 
     var request = new InternalVideoController.AddLocationRequest(locationId, true);
 
+    // Act
     VideoLocation response = controller.addLocation(id, request).getBody();
 
+    // Assert
     assertThat(response).isSameAs(location);
     verify(videoLocationService).addLocationInternal(id, locationId, true);
   }
 
   @Test
-  void removeLocation_callsService() {
+  void removeLocation_validRequest_callsService() {
+    // Arrange
     UUID id = UUID.randomUUID();
     UUID locationId = UUID.randomUUID();
 
+    // Act
     controller.removeLocation(id, locationId);
 
+    // Assert
     verify(videoLocationService).removeLocationInternal(id, locationId);
   }
 }
