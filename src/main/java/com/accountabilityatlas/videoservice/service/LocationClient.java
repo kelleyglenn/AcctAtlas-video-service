@@ -13,8 +13,7 @@ public class LocationClient {
   private final WebClient webClient;
 
   public LocationClient(
-      WebClient.Builder builder,
-      @Value("${app.location-service.base-url}") String baseUrl) {
+      WebClient.Builder builder, @Value("${app.location-service.base-url}") String baseUrl) {
     this.webClient = builder.baseUrl(baseUrl).build();
   }
 

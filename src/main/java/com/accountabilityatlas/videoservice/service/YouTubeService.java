@@ -117,7 +117,6 @@ public class YouTubeService {
     }
   }
 
-  // DTOs for YouTube API response
   record YouTubeApiResponse(List<VideoItem> items) {}
 
   record VideoItem(Snippet snippet, ContentDetails contentDetails) {}
