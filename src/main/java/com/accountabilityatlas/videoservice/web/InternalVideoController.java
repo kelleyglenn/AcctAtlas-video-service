@@ -49,7 +49,8 @@ public class InternalVideoController {
             ? request.participants().stream().map(Participant::valueOf).collect(Collectors.toSet())
             : null;
 
-    Video video = videoService.updateVideoInternal(id, amendments, participants, request.videoDate());
+    Video video =
+        videoService.updateVideoInternal(id, amendments, participants, request.videoDate());
     return ResponseEntity.ok(video);
   }
 
@@ -70,8 +71,7 @@ public class InternalVideoController {
   }
 
   @DeleteMapping("/{id}/locations/{locationId}")
-  public ResponseEntity<Void> removeLocation(
-      @PathVariable UUID id, @PathVariable UUID locationId) {
+  public ResponseEntity<Void> removeLocation(@PathVariable UUID id, @PathVariable UUID locationId) {
     videoLocationService.removeLocationInternal(id, locationId);
     return ResponseEntity.noContent().build();
   }

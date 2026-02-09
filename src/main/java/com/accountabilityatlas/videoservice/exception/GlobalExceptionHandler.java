@@ -11,7 +11,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-  public record ErrorResponse(String code, String message, List<FieldError> details, String traceId) {}
+  public record ErrorResponse(
+      String code, String message, List<FieldError> details, String traceId) {}
 
   public record FieldError(String field, String message) {}
 
@@ -24,7 +25,8 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(VideoAlreadyExistsException.class)
   public ResponseEntity<ErrorResponse> handleVideoAlreadyExists(VideoAlreadyExistsException ex) {
     return ResponseEntity.status(HttpStatus.CONFLICT)
-        .body(new ErrorResponse("VIDEO_EXISTS", ex.getMessage(), null, UUID.randomUUID().toString()));
+        .body(
+            new ErrorResponse("VIDEO_EXISTS", ex.getMessage(), null, UUID.randomUUID().toString()));
   }
 
   @ExceptionHandler(InvalidYouTubeUrlException.class)
@@ -36,7 +38,8 @@ public class GlobalExceptionHandler {
   }
 
   @ExceptionHandler(YouTubeVideoNotFoundException.class)
-  public ResponseEntity<ErrorResponse> handleYouTubeVideoNotFound(YouTubeVideoNotFoundException ex) {
+  public ResponseEntity<ErrorResponse> handleYouTubeVideoNotFound(
+      YouTubeVideoNotFoundException ex) {
     return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
         .body(
             new ErrorResponse(
@@ -57,10 +60,7 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.CONFLICT)
         .body(
             new ErrorResponse(
-                "LOCATION_ALREADY_LINKED",
-                ex.getMessage(),
-                null,
-                UUID.randomUUID().toString()));
+                "LOCATION_ALREADY_LINKED", ex.getMessage(), null, UUID.randomUUID().toString()));
   }
 
   @ExceptionHandler(UnauthorizedException.class)

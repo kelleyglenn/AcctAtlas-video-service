@@ -5,10 +5,13 @@ import com.accountabilityatlas.videoservice.domain.Participant;
 import com.accountabilityatlas.videoservice.domain.Video;
 import com.accountabilityatlas.videoservice.domain.VideoLocation;
 import com.accountabilityatlas.videoservice.domain.VideoStatus;
+import com.accountabilityatlas.videoservice.exception.UnauthorizedException;
 import com.accountabilityatlas.videoservice.service.VideoLocationService;
 import com.accountabilityatlas.videoservice.service.VideoService;
+import com.accountabilityatlas.videoservice.web.api.VideoLocationsApi;
 import com.accountabilityatlas.videoservice.web.api.VideosApi;
 import com.accountabilityatlas.videoservice.web.model.*;
+import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -18,13 +21,14 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-public class VideoController implements VideosApi {
+public class VideoController implements VideosApi, VideoLocationsApi {
 
   private final VideoService videoService;
   private final VideoLocationService videoLocationService;
@@ -55,19 +59,49 @@ public class VideoController implements VideosApi {
                 sort != null ? sort : "createdAt"));
 
     VideoStatus domainStatus = status != null ? VideoStatus.valueOf(status.name()) : null;
-    Page<Video> videos = videoService.listVideos(domainStatus, pageable);
+    UUID currentUserId = getCurrentUserIdOrNull();
+    if (submittedBy != null && !submittedBy.equals(currentUserId)) {
+      domainStatus = VideoStatus.APPROVED;
+    }
+
+    Page<Video> videos =
+        submittedBy != null
+            ? videoService.listVideosByUser(submittedBy, domainStatus, pageable)
+            : videoService.listVideos(domainStatus, pageable);
 
     return ResponseEntity.ok(toVideoListResponse(videos));
   }
 
   @Override
-  public ResponseEntity<VideoDetail> createVideo(
-      CreateVideoRequest request, @AuthenticationPrincipal Jwt jwt) {
-    UUID userId = UUID.fromString(jwt.getSubject());
+  public ResponseEntity<VideoListResponse> getVideosByUser(
+      UUID userId,
+      com.accountabilityatlas.videoservice.web.model.VideoStatus status,
+      Integer page,
+      Integer size) {
+    PageRequest pageable = PageRequest.of(page != null ? page : 0, size != null ? size : 20);
+
+    UUID currentUserId = getCurrentUserIdOrNull();
+    boolean isOwner = currentUserId != null && currentUserId.equals(userId);
+    VideoStatus domainStatus =
+        status != null
+            ? VideoStatus.valueOf(status.name())
+            : (isOwner ? null : VideoStatus.APPROVED);
+
+    if (!isOwner) {
+      domainStatus = VideoStatus.APPROVED;
+    }
+
+    Page<Video> videos = videoService.listVideosByUser(userId, domainStatus, pageable);
+    return ResponseEntity.ok(toVideoListResponse(videos));
+  }
+
+  @Override
+  public ResponseEntity<VideoDetail> createVideo(CreateVideoRequest request) {
+    UUID userId = requireCurrentUserId();
 
     Video video =
         videoService.createVideo(
-            request.getYoutubeUrl(),
+            request.getYoutubeUrl().toString(),
             request.getAmendments().stream()
                 .map(a -> Amendment.valueOf(a.name()))
                 .collect(Collectors.toSet()),
@@ -85,9 +119,8 @@ public class VideoController implements VideosApi {
   }
 
   @Override
-  public ResponseEntity<VideoDetail> updateVideo(
-      UUID id, UpdateVideoRequest request, @AuthenticationPrincipal Jwt jwt) {
-    UUID userId = UUID.fromString(jwt.getSubject());
+  public ResponseEntity<VideoDetail> updateVideo(UUID id, UpdateVideoRequest request) {
+    UUID userId = requireCurrentUserId();
 
     Video video =
         videoService.updateVideo(
@@ -109,8 +142,8 @@ public class VideoController implements VideosApi {
   }
 
   @Override
-  public ResponseEntity<Void> deleteVideo(UUID id, @AuthenticationPrincipal Jwt jwt) {
-    UUID userId = UUID.fromString(jwt.getSubject());
+  public ResponseEntity<Void> deleteVideo(UUID id) {
+    UUID userId = requireCurrentUserId();
     videoService.deleteVideo(id, userId);
     return ResponseEntity.noContent().build();
   }
@@ -122,9 +155,9 @@ public class VideoController implements VideosApi {
   }
 
   @Override
-  public ResponseEntity<com.accountabilityatlas.videoservice.web.model.VideoLocation> addVideoLocation(
-      UUID id, AddVideoLocationRequest request, @AuthenticationPrincipal Jwt jwt) {
-    UUID userId = UUID.fromString(jwt.getSubject());
+  public ResponseEntity<com.accountabilityatlas.videoservice.web.model.VideoLocation>
+      addVideoLocation(UUID id, AddVideoLocationRequest request) {
+    UUID userId = requireCurrentUserId();
 
     VideoLocation location =
         videoLocationService.addLocation(
@@ -134,9 +167,8 @@ public class VideoController implements VideosApi {
   }
 
   @Override
-  public ResponseEntity<Void> removeVideoLocation(
-      UUID id, UUID locationId, @AuthenticationPrincipal Jwt jwt) {
-    UUID userId = UUID.fromString(jwt.getSubject());
+  public ResponseEntity<Void> removeVideoLocation(UUID id, UUID locationId) {
+    UUID userId = requireCurrentUserId();
     videoLocationService.removeLocation(id, locationId, userId);
     return ResponseEntity.noContent().build();
   }
@@ -147,7 +179,7 @@ public class VideoController implements VideosApi {
     detail.setYoutubeId(video.getYoutubeId());
     detail.setTitle(video.getTitle());
     detail.setDescription(video.getDescription());
-    detail.setThumbnailUrl(video.getThumbnailUrl());
+    detail.setThumbnailUrl(toUriOrNull(video.getThumbnailUrl()));
     detail.setDurationSeconds(video.getDurationSeconds());
     detail.setChannelId(video.getChannelId());
     detail.setChannelName(video.getChannelName());
@@ -165,7 +197,8 @@ public class VideoController implements VideosApi {
             .map(p -> com.accountabilityatlas.videoservice.web.model.Participant.valueOf(p.name()))
             .toList());
     detail.setStatus(
-        com.accountabilityatlas.videoservice.web.model.VideoStatus.valueOf(video.getStatus().name()));
+        com.accountabilityatlas.videoservice.web.model.VideoStatus.valueOf(
+            video.getStatus().name()));
     detail.setSubmittedBy(video.getSubmittedBy());
     detail.setCreatedAt(video.getCreatedAt().atOffset(java.time.ZoneOffset.UTC));
     detail.setLocations(video.getLocations().stream().map(this::toVideoLocationModel).toList());
@@ -187,7 +220,7 @@ public class VideoController implements VideosApi {
     summary.setId(video.getId());
     summary.setYoutubeId(video.getYoutubeId());
     summary.setTitle(video.getTitle());
-    summary.setThumbnailUrl(video.getThumbnailUrl());
+    summary.setThumbnailUrl(toUriOrNull(video.getThumbnailUrl()));
     summary.setDurationSeconds(video.getDurationSeconds());
     summary.setAmendments(
         video.getAmendments().stream()
@@ -198,7 +231,8 @@ public class VideoController implements VideosApi {
             .map(p -> com.accountabilityatlas.videoservice.web.model.Participant.valueOf(p.name()))
             .toList());
     summary.setStatus(
-        com.accountabilityatlas.videoservice.web.model.VideoStatus.valueOf(video.getStatus().name()));
+        com.accountabilityatlas.videoservice.web.model.VideoStatus.valueOf(
+            video.getStatus().name()));
     summary.setCreatedAt(video.getCreatedAt().atOffset(java.time.ZoneOffset.UTC));
     return summary;
   }
@@ -233,5 +267,32 @@ public class VideoController implements VideosApi {
     VideoLocationsResponse response = new VideoLocationsResponse();
     response.setLocations(locations.stream().map(this::toVideoLocationModel).toList());
     return response;
+  }
+
+  private UUID requireCurrentUserId() {
+    UUID userId = getCurrentUserIdOrNull();
+    if (userId == null) {
+      throw new UnauthorizedException("Missing or invalid authentication token");
+    }
+    return userId;
+  }
+
+  private UUID getCurrentUserIdOrNull() {
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
+      return null;
+    }
+    return UUID.fromString(jwt.getSubject());
+  }
+
+  private URI toUriOrNull(String value) {
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+    try {
+      return URI.create(value);
+    } catch (IllegalArgumentException ex) {
+      return null;
+    }
   }
 }
