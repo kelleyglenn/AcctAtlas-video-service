@@ -9,11 +9,14 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Lint OpenAPI spec (Spectral)
-        uses: stoplightio/spectral-action@v1
+        uses: stoplightio/spectral-action@latest
         with:
-          file_path: 'docs/api-specification.yaml'
+          file_glob: 'docs/api-specification.yaml'

@@ -17,6 +17,7 @@ info:
     name: AccountabilityAtlas Team
   license:
     name: MIT
+    identifier: MIT
 
 servers:
   - url: http://localhost:8082
@@ -189,8 +190,12 @@ paths:
       operationId: updateVideo
       summary: Update video metadata
       description: |
-        Update video amendments, participants, or date. Only the video owner can update.
+        Update video amendments, participants, or date.
         YouTube metadata (title, description, etc.) cannot be changed.
+
+        **Authorization:**
+        - Owner: Can update only if video status != APPROVED
+        - Moderators/Admins: Use moderation-service endpoints instead
       tags: [Videos]
       parameters:
         - name: id
@@ -225,8 +230,11 @@ paths:
       operationId: deleteVideo
       summary: Delete a video
       description: |
-        Soft-delete a video. Only the owner or a MODERATOR+ can delete.
-        Sets status to DELETED; video is hidden but data retained.
+        Soft-delete a video. Sets status to DELETED; video is hidden but data retained.
+
+        **Authorization:**
+        - Owner: Can delete only if video status != APPROVED
+        - Moderators/Admins: Use moderation-service endpoints instead
       tags: [Videos]
       parameters:
         - name: id
@@ -318,8 +326,12 @@ paths:
       operationId: addVideoLocation
       summary: Add a location to a video
       description: |
-        Associate an existing location with the video. Only the video owner can add locations.
+        Associate an existing location with the video.
         If isPrimary is true, any existing primary location is demoted.
+
+        **Authorization:**
+        - Owner: Can add locations only if video status != APPROVED
+        - Moderators/Admins: Use moderation-service endpoints instead
       tags: [VideoLocations]
       parameters:
         - name: id
@@ -374,8 +386,12 @@ paths:
       operationId: removeVideoLocation
       summary: Remove a location from a video
       description: |
-        Remove the association between a video and location. Only the video owner can remove.
+        Remove the association between a video and location.
         If removing the primary location, no new primary is automatically assigned.
+
+        **Authorization:**
+        - Owner: Can remove locations only if video status != APPROVED
+        - Moderators/Admins: Use moderation-service endpoints instead
       tags: [VideoLocations]
       parameters:
         - name: id

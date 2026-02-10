@@ -1,0 +1,16 @@
+pluginManagement {
+    plugins {
+        id 'org.springframework.boot' version "${springBootVersion}"
+        id 'io.spring.dependency-management' version '1.1.7'
+        id 'com.google.cloud.tools.jib' version "${jibVersion}"
+        id 'com.diffplug.spotless' version "${spotlessVersion}"
+        id 'net.ltgt.errorprone' version "${errorProneVersion}"
+        id 'org.openapi.generator' version "${openApiGeneratorVersion}"
+    }
+}
+
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
+rootProject.name = 'acctatlas-video-service'
