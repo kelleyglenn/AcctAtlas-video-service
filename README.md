@@ -62,11 +62,17 @@ The service starts on **http://localhost:8082**.
 # Health check
 curl http://localhost:8082/actuator/health
 
+# Submit a video (requires auth token from user-service)
+curl -X POST http://localhost:8082/videos \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer TOKEN" \
+  -d '{"youtubeUrl":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","amendments":["FIRST","FOURTH"],"participants":["POLICE","CITIZEN"]}'
+
 # List approved videos
 curl http://localhost:8082/videos
 
-# Get video by ID
-curl http://localhost:8082/videos/{id}
+# Get video by ID (replace ID with actual UUID)
+curl http://localhost:8082/videos/550e8400-e29b-41d4-a716-446655440000
 ```
 
 ### Run tests
