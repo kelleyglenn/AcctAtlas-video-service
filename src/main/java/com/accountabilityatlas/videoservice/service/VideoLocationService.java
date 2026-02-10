@@ -39,7 +39,7 @@ public class VideoLocationService {
     Video video =
         videoRepository.findById(videoId).orElseThrow(() -> new VideoNotFoundException(videoId));
 
-    if (!canModify(video, currentUserId)) {
+    if (mayNotModify(video, currentUserId)) {
       throw new UnauthorizedException("You do not have permission to modify this video");
     }
 
@@ -87,15 +87,19 @@ public class VideoLocationService {
     Video video =
         videoRepository.findById(videoId).orElseThrow(() -> new VideoNotFoundException(videoId));
 
-    if (!canModify(video, currentUserId)) {
+    if (mayNotModify(video, currentUserId)) {
       throw new UnauthorizedException("You do not have permission to modify this video");
     }
 
-    removeLocationInternal(videoId, locationId);
+    doRemoveLocation(videoId, locationId);
   }
 
   @Transactional
   public void removeLocationInternal(UUID videoId, UUID locationId) {
+    doRemoveLocation(videoId, locationId);
+  }
+
+  private void doRemoveLocation(UUID videoId, UUID locationId) {
     VideoLocation location =
         videoLocationRepository
             .findByVideoIdAndLocationId(videoId, locationId)
@@ -104,10 +108,10 @@ public class VideoLocationService {
     videoLocationRepository.delete(location);
   }
 
-  private boolean canModify(Video video, UUID currentUserId) {
+  private boolean mayNotModify(Video video, UUID currentUserId) {
     if (!video.getSubmittedBy().equals(currentUserId)) {
-      return false;
+      return true;
     }
-    return video.getStatus() != VideoStatus.APPROVED;
+    return video.getStatus() == VideoStatus.APPROVED;
   }
 }
