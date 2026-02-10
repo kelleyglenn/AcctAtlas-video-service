@@ -13,11 +13,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface VideoRepository extends JpaRepository<Video, UUID> {
 
-  Optional<Video> findByYoutubeId(String youtubeId);
-
   boolean existsByYoutubeId(String youtubeId);
-
-  Page<Video> findByStatus(VideoStatus status, Pageable pageable);
 
   Page<Video> findBySubmittedBy(UUID submittedBy, Pageable pageable);
 

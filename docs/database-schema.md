@@ -121,10 +121,10 @@ public class VideoLocation {
 
 ## Common Query Patterns
 
-### Find video by YouTube ID
+### Check if YouTube video already submitted
 
 ```java
-Optional<Video> findByYoutubeId(String youtubeId);
+boolean existsByYoutubeId(String youtubeId);
 ```
 
 ### List approved videos
