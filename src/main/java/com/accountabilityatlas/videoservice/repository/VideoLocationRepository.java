@@ -21,6 +21,4 @@ public interface VideoLocationRepository extends JpaRepository<VideoLocation, UU
   @Modifying
   @Query("UPDATE VideoLocation vl SET vl.primary = false WHERE vl.video.id = :videoId")
   void clearPrimaryForVideo(UUID videoId);
-
-  Optional<VideoLocation> findByVideoIdAndPrimaryTrue(UUID videoId);
 }
