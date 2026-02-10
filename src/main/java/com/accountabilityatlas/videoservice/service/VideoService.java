@@ -27,6 +27,10 @@ public class VideoService {
 
   @Transactional(readOnly = true)
   public Video getVideo(UUID id) {
+    return findVideoOrThrow(id);
+  }
+
+  private Video findVideoOrThrow(UUID id) {
     return videoRepository.findById(id).orElseThrow(() -> new VideoNotFoundException(id));
   }
 
@@ -88,9 +92,9 @@ public class VideoService {
       LocalDate videoDate,
       UUID currentUserId) {
 
-    Video video = getVideo(id);
+    Video video = findVideoOrThrow(id);
 
-    if (!canModify(video, currentUserId)) {
+    if (mayNotModify(video, currentUserId)) {
       throw new UnauthorizedException("You do not have permission to modify this video");
     }
 
@@ -109,9 +113,9 @@ public class VideoService {
 
   @Transactional
   public void deleteVideo(UUID id, UUID currentUserId) {
-    Video video = getVideo(id);
+    Video video = findVideoOrThrow(id);
 
-    if (!canModify(video, currentUserId)) {
+    if (mayNotModify(video, currentUserId)) {
       throw new UnauthorizedException("You do not have permission to delete this video");
     }
 
@@ -123,7 +127,7 @@ public class VideoService {
   public Video updateVideoInternal(
       UUID id, Set<Amendment> amendments, Set<Participant> participants, LocalDate videoDate) {
 
-    Video video = getVideo(id);
+    Video video = findVideoOrThrow(id);
 
     if (amendments != null && !amendments.isEmpty()) {
       video.setAmendments(amendments);
@@ -140,16 +144,16 @@ public class VideoService {
 
   @Transactional
   public Video updateVideoStatus(UUID id, VideoStatus status) {
-    Video video = getVideo(id);
+    Video video = findVideoOrThrow(id);
     video.setStatus(status);
     return videoRepository.save(video);
   }
 
-  private boolean canModify(Video video, UUID currentUserId) {
+  private boolean mayNotModify(Video video, UUID currentUserId) {
     if (!video.getSubmittedBy().equals(currentUserId)) {
-      return false;
+      return true;
     }
-    return video.getStatus() != VideoStatus.APPROVED;
+    return video.getStatus() == VideoStatus.APPROVED;
   }
 
   public boolean canView(Video video, UUID currentUserId, String trustTier) {
@@ -161,7 +165,7 @@ public class VideoService {
   }
 
   private boolean isOwnerOrModerator(Video video, UUID currentUserId, String trustTier) {
-    if (currentUserId != null && video.getSubmittedBy().equals(currentUserId)) {
+    if (video.getSubmittedBy().equals(currentUserId)) {
       return true;
     }
     return Set.of("MODERATOR", "ADMIN").contains(trustTier);
