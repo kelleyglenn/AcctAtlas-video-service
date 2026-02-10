@@ -18,11 +18,8 @@ class YouTubeServiceTest {
 
   @BeforeEach
   void setUp() {
-    // Arrange
     YouTubeProperties properties = new YouTubeProperties();
     properties.setApiKey("test-key");
-
-    // Act
     youTubeService = new YouTubeService(WebClient.builder(), properties);
   }
 
