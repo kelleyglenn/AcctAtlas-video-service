@@ -30,10 +30,6 @@ public class VideoService {
     return findVideoOrThrow(id);
   }
 
-  private Video findVideoOrThrow(UUID id) {
-    return videoRepository.findById(id).orElseThrow(() -> new VideoNotFoundException(id));
-  }
-
   @Transactional(readOnly = true)
   public Page<Video> listVideos(VideoStatus status, Pageable pageable) {
     if (status == null) {
@@ -147,6 +143,10 @@ public class VideoService {
     Video video = findVideoOrThrow(id);
     video.setStatus(status);
     return videoRepository.save(video);
+  }
+
+  private Video findVideoOrThrow(UUID id) {
+    return videoRepository.findById(id).orElseThrow(() -> new VideoNotFoundException(id));
   }
 
   private boolean mayNotModify(Video video, UUID currentUserId) {

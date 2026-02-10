@@ -42,7 +42,7 @@ public class Video {
   @Column(name = "channel_id", length = 50)
   private String channelId;
 
-  @Column(name = "channel_name", length = 255)
+  @Column(name = "channel_name")
   private String channelName;
 
   @Column(name = "published_at")

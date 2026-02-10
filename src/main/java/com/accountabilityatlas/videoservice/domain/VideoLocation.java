@@ -29,7 +29,7 @@ public class VideoLocation {
   @Column(name = "is_primary", nullable = false)
   private boolean primary;
 
-  @Column(name = "display_name", length = 255)
+  @Column(name = "display_name")
   private String displayName;
 
   @Column(length = 100)

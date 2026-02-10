@@ -81,7 +81,7 @@ public class YouTubeService {
         throw new YouTubeVideoNotFoundException(videoId);
       }
 
-      var item = response.items().get(0);
+      var item = response.items().getFirst();
       var snippet = item.snippet();
       var contentDetails = item.contentDetails();
 

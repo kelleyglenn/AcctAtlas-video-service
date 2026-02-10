@@ -2,7 +2,6 @@ package com.accountabilityatlas.videoservice.repository;
 
 import com.accountabilityatlas.videoservice.domain.Video;
 import com.accountabilityatlas.videoservice.domain.VideoStatus;
-import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -21,9 +20,9 @@ public interface VideoRepository extends JpaRepository<Video, UUID> {
 
   @Query(
       """
-      SELECT v FROM Video v
-      WHERE v.status = :status
-      ORDER BY v.createdAt DESC
-      """)
+                    SELECT v FROM Video v
+                    WHERE v.status = :status
+                    ORDER BY v.createdAt DESC
+                    """)
   Page<Video> findByStatusOrderByCreatedAtDesc(VideoStatus status, Pageable pageable);
 }
