@@ -8,19 +8,21 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.stereotype.Component;
 
-/** Publishes video-related events using Spring's ApplicationEventPublisher. */
+/** Publishes video-related events to SQS via Spring Cloud Stream. */
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class VideoEventPublisher {
 
-  private final ApplicationEventPublisher applicationEventPublisher;
+  private static final String VIDEO_SUBMITTED_BINDING = "videoSubmitted-out-0";
+
+  private final StreamBridge streamBridge;
 
   /**
-   * Publishes a VideoSubmitted event.
+   * Publishes a VideoSubmitted event to the video-events queue.
    *
    * @param video the submitted video
    * @param submitterTrustTier the submitter's trust tier
@@ -38,8 +40,12 @@ public class VideoEventPublisher {
             locationIds,
             Instant.now());
 
-    log.info("Publishing VideoSubmitted event for video {}", video.getId());
-    applicationEventPublisher.publishEvent(event);
-    log.debug("Published VideoSubmitted event: {}", event);
+    log.info("Publishing VideoSubmitted event for video {} to SQS", video.getId());
+    boolean sent = streamBridge.send(VIDEO_SUBMITTED_BINDING, event);
+    if (sent) {
+      log.debug("Published VideoSubmitted event: {}", event);
+    } else {
+      log.error("Failed to publish VideoSubmitted event for video {}", video.getId());
+    }
   }
 }
