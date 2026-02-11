@@ -38,8 +38,14 @@ spring:
       bindings:
         videoSubmitted-out-0:
           destination: video-events
+        handleVideoApproved-in-0:
+          destination: moderation-events
+          group: video-service
+        handleVideoRejected-in-0:
+          destination: moderation-events
+          group: video-service
       function:
-        definition: ""
+        definition: handleVideoApproved;handleVideoRejected
 
 management:
   endpoints:
