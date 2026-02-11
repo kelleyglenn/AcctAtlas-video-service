@@ -4,12 +4,15 @@ import com.accountabilityatlas.videoservice.domain.Amendment;
 import com.accountabilityatlas.videoservice.domain.Participant;
 import com.accountabilityatlas.videoservice.domain.Video;
 import com.accountabilityatlas.videoservice.domain.VideoStatus;
+import com.accountabilityatlas.videoservice.event.VideoEventPublisher;
 import com.accountabilityatlas.videoservice.exception.UnauthorizedException;
 import com.accountabilityatlas.videoservice.exception.VideoAlreadyExistsException;
 import com.accountabilityatlas.videoservice.exception.VideoNotFoundException;
 import com.accountabilityatlas.videoservice.repository.VideoRepository;
 import com.accountabilityatlas.videoservice.service.YouTubeService.YouTubeMetadata;
 import java.time.LocalDate;
+import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +27,7 @@ public class VideoService {
 
   private final VideoRepository videoRepository;
   private final YouTubeService youTubeService;
+  private final VideoEventPublisher videoEventPublisher;
 
   @Transactional(readOnly = true)
   public Video getVideo(UUID id) {
@@ -46,6 +50,12 @@ public class VideoService {
     return videoRepository.findBySubmittedBy(userId, pageable);
   }
 
+  /**
+   * Creates a video without event publishing. For backwards compatibility.
+   *
+   * @deprecated Use {@link #createVideo(String, Set, Set, LocalDate, UUID, String, List)} instead.
+   */
+  @Deprecated
   @Transactional
   public Video createVideo(
       String youtubeUrl,
@@ -53,6 +63,37 @@ public class VideoService {
       Set<Participant> participants,
       LocalDate videoDate,
       UUID submittedBy) {
+    return createVideo(
+        youtubeUrl,
+        amendments,
+        participants,
+        videoDate,
+        submittedBy,
+        "NEW",
+        Collections.emptyList());
+  }
+
+  /**
+   * Creates a video and publishes a VideoSubmitted event.
+   *
+   * @param youtubeUrl the YouTube URL
+   * @param amendments set of amendments
+   * @param participants set of participants
+   * @param videoDate the incident date
+   * @param submittedBy the submitter's user ID
+   * @param submitterTrustTier the submitter's trust tier
+   * @param locationIds list of location IDs
+   * @return the created video
+   */
+  @Transactional
+  public Video createVideo(
+      String youtubeUrl,
+      Set<Amendment> amendments,
+      Set<Participant> participants,
+      LocalDate videoDate,
+      UUID submittedBy,
+      String submitterTrustTier,
+      List<UUID> locationIds) {
 
     String videoId = youTubeService.extractVideoId(youtubeUrl);
 
@@ -77,7 +118,12 @@ public class VideoService {
     video.setStatus(VideoStatus.PENDING);
     video.setSubmittedBy(submittedBy);
 
-    return videoRepository.save(video);
+    Video saved = videoRepository.save(video);
+
+    // Publish event after successful save
+    videoEventPublisher.publishVideoSubmitted(saved, submitterTrustTier, locationIds);
+
+    return saved;
   }
 
   @Transactional

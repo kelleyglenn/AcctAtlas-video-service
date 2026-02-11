@@ -9,6 +9,7 @@ import com.accountabilityatlas.videoservice.domain.Amendment;
 import com.accountabilityatlas.videoservice.domain.Participant;
 import com.accountabilityatlas.videoservice.domain.Video;
 import com.accountabilityatlas.videoservice.domain.VideoStatus;
+import com.accountabilityatlas.videoservice.event.VideoEventPublisher;
 import com.accountabilityatlas.videoservice.exception.UnauthorizedException;
 import com.accountabilityatlas.videoservice.exception.VideoAlreadyExistsException;
 import com.accountabilityatlas.videoservice.exception.VideoNotFoundException;
@@ -35,6 +36,7 @@ class VideoServiceTest {
 
   @Mock private VideoRepository videoRepository;
   @Mock private YouTubeService youTubeService;
+  @Mock private VideoEventPublisher videoEventPublisher;
 
   @InjectMocks private VideoService videoService;
 
