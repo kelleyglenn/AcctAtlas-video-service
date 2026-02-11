@@ -6,10 +6,14 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 import com.accountabilityatlas.videoservice.config.YouTubeProperties;
 import com.accountabilityatlas.videoservice.exception.InvalidYouTubeUrlException;
 import java.time.Instant;
+import java.util.stream.Stream;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.web.reactive.function.client.WebClient;
 
 class YouTubeServiceTest {
@@ -23,47 +27,17 @@ class YouTubeServiceTest {
     youTubeService = new YouTubeService(WebClient.builder(), properties);
   }
 
-  @Test
-  void extractVideoId_standardUrl_returnsId() {
-    // Arrange
-    String url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
-
-    // Act
-    String result = youTubeService.extractVideoId(url);
-
-    // Assert
-    assertThat(result).isEqualTo("dQw4w9WgXcQ");
+  static Stream<Arguments> validYouTubeUrls() {
+    return Stream.of(
+        Arguments.of("standard URL", "https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
+        Arguments.of("short URL", "https://youtu.be/dQw4w9WgXcQ"),
+        Arguments.of("embed URL", "https://www.youtube.com/embed/dQw4w9WgXcQ"),
+        Arguments.of("URL with query params", "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=120"));
   }
 
-  @Test
-  void extractVideoId_shortUrl_returnsId() {
-    // Arrange
-    String url = "https://youtu.be/dQw4w9WgXcQ";
-
-    // Act
-    String result = youTubeService.extractVideoId(url);
-
-    // Assert
-    assertThat(result).isEqualTo("dQw4w9WgXcQ");
-  }
-
-  @Test
-  void extractVideoId_embedUrl_returnsId() {
-    // Arrange
-    String url = "https://www.youtube.com/embed/dQw4w9WgXcQ";
-
-    // Act
-    String result = youTubeService.extractVideoId(url);
-
-    // Assert
-    assertThat(result).isEqualTo("dQw4w9WgXcQ");
-  }
-
-  @Test
-  void extractVideoId_queryParams_returnsId() {
-    // Arrange
-    String url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=120";
-
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("validYouTubeUrls")
+  void extractVideoId_validUrls_returnsId(String description, String url) {
     // Act
     String result = youTubeService.extractVideoId(url);
 
