@@ -37,7 +37,10 @@ class VideoServiceTest {
 
   @Mock private VideoRepository videoRepository;
   @Mock private YouTubeService youTubeService;
-  @Mock private VideoEventPublisher videoEventPublisher;
+
+  @SuppressWarnings("unused")
+  @Mock
+  private VideoEventPublisher videoEventPublisher;
 
   @InjectMocks private VideoService videoService;
 
@@ -75,7 +78,7 @@ class VideoServiceTest {
     Page<Video> result = videoService.listVideos(null, pageable);
 
     // Assert
-    assertThat(result.getTotalElements()).isEqualTo(0);
+    assertThat(result.getTotalElements()).isZero();
     verify(videoRepository).findByStatusOrderByCreatedAtDesc(VideoStatus.APPROVED, pageable);
   }
 
