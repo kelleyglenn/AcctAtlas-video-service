@@ -3,6 +3,10 @@ spring:
     url: jdbc:postgresql://localhost:5432/video_service
     username: video_service
     password: local_dev
+  cloud:
+    aws:
+      sqs:
+        endpoint: http://localhost:4566
 
 logging:
   level:
