@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -103,10 +105,7 @@ public class VideoController implements VideosApi, VideoLocationsApi {
 
     UUID currentUserId = getCurrentUserIdOrNull();
     boolean isOwner = currentUserId != null && currentUserId.equals(userId);
-    VideoStatus domainStatus =
-        status != null
-            ? VideoStatus.valueOf(status.name())
-            : (isOwner ? null : VideoStatus.APPROVED);
+    VideoStatus domainStatus = getDomainStatus(status, isOwner);
 
     if (!isOwner) {
       domainStatus = VideoStatus.APPROVED;
@@ -116,10 +115,21 @@ public class VideoController implements VideosApi, VideoLocationsApi {
     return ResponseEntity.ok(toVideoListResponse(videos));
   }
 
+  private static @Nullable VideoStatus getDomainStatus(
+      com.accountabilityatlas.videoservice.web.model.VideoStatus status, boolean isOwner) {
+    if (status != null) return VideoStatus.valueOf(status.name());
+    else {
+      return isOwner ? null : VideoStatus.APPROVED;
+    }
+  }
+
   /** Create a new video submission for the authenticated user and optionally attach a location. */
   @Override
   public ResponseEntity<VideoDetail> createVideo(CreateVideoRequest request) {
     UUID userId = requireCurrentUserId();
+    String trustTier = getCurrentTrustTierOrNull();
+    List<UUID> locationIds =
+        request.getLocationId() != null ? List.of(request.getLocationId()) : List.of();
 
     Video video =
         videoService.createVideo(
@@ -131,7 +141,9 @@ public class VideoController implements VideosApi, VideoLocationsApi {
                 .map(p -> Participant.valueOf(p.name()))
                 .collect(Collectors.toSet()),
             request.getVideoDate(),
-            userId);
+            userId,
+            trustTier != null ? trustTier : "NEW",
+            locationIds);
 
     if (request.getLocationId() != null) {
       videoLocationService.addLocationInternal(video.getId(), request.getLocationId(), true);
@@ -277,21 +289,26 @@ public class VideoController implements VideosApi, VideoLocationsApi {
     model.setIsPrimary(location.isPrimary());
 
     if (location.getDisplayName() != null) {
-      LocationSummary locSummary = new LocationSummary();
-      locSummary.setId(location.getLocationId());
-      locSummary.setDisplayName(location.getDisplayName());
-      locSummary.setCity(location.getCity());
-      locSummary.setState(location.getState());
-      if (location.getLatitude() != null && location.getLongitude() != null) {
-        Coordinates coords = new Coordinates();
-        coords.setLatitude(location.getLatitude());
-        coords.setLongitude(location.getLongitude());
-        locSummary.setCoordinates(coords);
-      }
+      LocationSummary locSummary = getLocationSummary(location);
       model.setLocation(locSummary);
     }
 
     return model;
+  }
+
+  private static @NonNull LocationSummary getLocationSummary(VideoLocation location) {
+    LocationSummary locSummary = new LocationSummary();
+    locSummary.setId(location.getLocationId());
+    locSummary.setDisplayName(location.getDisplayName());
+    locSummary.setCity(location.getCity());
+    locSummary.setState(location.getState());
+    if (location.getLatitude() != null && location.getLongitude() != null) {
+      Coordinates coordinates = new Coordinates();
+      coordinates.setLatitude(location.getLatitude());
+      coordinates.setLongitude(location.getLongitude());
+      locSummary.setCoordinates(coordinates);
+    }
+    return locSummary;
   }
 
   /** Convert a list of domain location links to the list response model. */

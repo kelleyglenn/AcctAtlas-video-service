@@ -2,11 +2,8 @@ package com.accountabilityatlas.videoservice.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anySet;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -18,11 +15,7 @@ import com.accountabilityatlas.videoservice.domain.VideoStatus;
 import com.accountabilityatlas.videoservice.exception.UnauthorizedException;
 import com.accountabilityatlas.videoservice.service.VideoLocationService;
 import com.accountabilityatlas.videoservice.service.VideoService;
-import com.accountabilityatlas.videoservice.web.model.AddVideoLocationRequest;
-import com.accountabilityatlas.videoservice.web.model.CreateVideoRequest;
-import com.accountabilityatlas.videoservice.web.model.UpdateVideoRequest;
-import com.accountabilityatlas.videoservice.web.model.VideoDetail;
-import com.accountabilityatlas.videoservice.web.model.VideoLocationsResponse;
+import com.accountabilityatlas.videoservice.web.model.*;
 import java.net.URI;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -74,6 +67,7 @@ class VideoControllerTest {
     VideoDetail detail = videoController.getVideo(video.getId()).getBody();
 
     // Assert
+    assertNotNull(detail);
     assertThat(detail.getId()).isEqualTo(video.getId());
     assertThat(detail.getYoutubeId()).isEqualTo(video.getYoutubeId());
     assertThat(detail.getThumbnailUrl()).isEqualTo(URI.create(video.getThumbnailUrl()));
@@ -99,12 +93,13 @@ class VideoControllerTest {
     setAuthWithTrustTier("ADMIN");
     Video video = sampleVideo();
     when(videoService.getVideo(video.getId())).thenReturn(video);
-    when(videoService.canView(eq(video), eq(userId), eq("ADMIN"))).thenReturn(true);
+    when(videoService.canView(video, userId, "ADMIN")).thenReturn(true);
 
     // Act
     VideoDetail detail = videoController.getVideo(video.getId()).getBody();
 
     // Assert
+    assertNotNull(detail);
     assertThat(detail.getId()).isEqualTo(video.getId());
   }
 
@@ -123,6 +118,7 @@ class VideoControllerTest {
         videoController.listVideos(null, null, null, submittedBy, 0, 20, "createdAt", "desc");
 
     // Assert
+    assertNotNull(response.getBody());
     assertThat(response.getBody().getContent()).hasSize(1);
   }
 
@@ -138,6 +134,7 @@ class VideoControllerTest {
     var response = videoController.listVideos(null, null, null, null, 0, 20, null, null);
 
     // Assert
+    assertNotNull(response.getBody());
     assertThat(response.getBody().getContent()).hasSize(1);
   }
 
@@ -163,6 +160,7 @@ class VideoControllerTest {
             "desc");
 
     // Assert
+    assertNotNull(response.getBody());
     assertThat(response.getBody().getContent()).hasSize(1);
   }
 
@@ -187,6 +185,7 @@ class VideoControllerTest {
             "desc");
 
     // Assert
+    assertNotNull(response.getBody());
     assertThat(response.getBody().getContent()).hasSize(1);
   }
 
@@ -203,6 +202,7 @@ class VideoControllerTest {
     var response = videoController.getVideosByUser(userId, null, 0, 20);
 
     // Assert
+    assertNotNull(response.getBody());
     assertThat(response.getBody().getContent()).hasSize(1);
   }
 
@@ -225,6 +225,7 @@ class VideoControllerTest {
             20);
 
     // Assert
+    assertNotNull(response.getBody());
     assertThat(response.getBody().getContent()).hasSize(1);
   }
 
@@ -256,15 +257,24 @@ class VideoControllerTest {
     request.setVideoDate(LocalDate.of(2024, 1, 2));
 
     Video video = sampleVideo();
-    when(videoService.createVideo(any(), anySet(), anySet(), any(), any())).thenReturn(video);
+    when(videoService.createVideo(any(), anySet(), anySet(), any(), any(), any(), anyList()))
+        .thenReturn(video);
 
     // Act
     VideoDetail detail = videoController.createVideo(request).getBody();
 
     // Assert
+    assertNotNull(detail);
     assertThat(detail.getId()).isEqualTo(video.getId());
     verify(videoService)
-        .createVideo(eq(request.getYoutubeUrl().toString()), anySet(), anySet(), any(), eq(userId));
+        .createVideo(
+            eq(request.getYoutubeUrl().toString()),
+            anySet(),
+            anySet(),
+            any(),
+            eq(userId),
+            any(),
+            anyList());
   }
 
   @Test
@@ -283,6 +293,7 @@ class VideoControllerTest {
     VideoDetail detail = videoController.updateVideo(video.getId(), request).getBody();
 
     // Assert
+    assertNotNull(detail);
     assertThat(detail.getId()).isEqualTo(video.getId());
   }
 
@@ -321,8 +332,11 @@ class VideoControllerTest {
     VideoLocationsResponse response = videoController.getVideoLocations(video.getId()).getBody();
 
     // Assert
+    assertNotNull(response);
     assertThat(response.getLocations()).hasSize(1);
-    assertThat(response.getLocations().get(0).getLocation().getDisplayName()).isEqualTo("Display");
+    assertNotNull(response.getLocations().getFirst().getLocation());
+    assertThat(response.getLocations().getFirst().getLocation().getDisplayName())
+        .isEqualTo("Display");
   }
 
   @Test
@@ -359,6 +373,7 @@ class VideoControllerTest {
     var response = videoController.addVideoLocation(video.getId(), request);
 
     // Assert
+    assertNotNull(response.getBody());
     assertThat(response.getBody().getLocationId()).isEqualTo(request.getLocationId());
   }
 

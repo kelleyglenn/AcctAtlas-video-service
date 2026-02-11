@@ -9,6 +9,7 @@ import com.accountabilityatlas.videoservice.domain.Amendment;
 import com.accountabilityatlas.videoservice.domain.Participant;
 import com.accountabilityatlas.videoservice.domain.Video;
 import com.accountabilityatlas.videoservice.domain.VideoStatus;
+import com.accountabilityatlas.videoservice.event.VideoEventPublisher;
 import com.accountabilityatlas.videoservice.exception.UnauthorizedException;
 import com.accountabilityatlas.videoservice.exception.VideoAlreadyExistsException;
 import com.accountabilityatlas.videoservice.exception.VideoNotFoundException;
@@ -16,6 +17,7 @@ import com.accountabilityatlas.videoservice.repository.VideoRepository;
 import com.accountabilityatlas.videoservice.service.YouTubeService.YouTubeMetadata;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -35,6 +37,10 @@ class VideoServiceTest {
 
   @Mock private VideoRepository videoRepository;
   @Mock private YouTubeService youTubeService;
+
+  @SuppressWarnings("unused")
+  @Mock
+  private VideoEventPublisher videoEventPublisher;
 
   @InjectMocks private VideoService videoService;
 
@@ -72,7 +78,7 @@ class VideoServiceTest {
     Page<Video> result = videoService.listVideos(null, pageable);
 
     // Assert
-    assertThat(result.getTotalElements()).isEqualTo(0);
+    assertThat(result.getTotalElements()).isZero();
     verify(videoRepository).findByStatusOrderByCreatedAtDesc(VideoStatus.APPROVED, pageable);
   }
 
@@ -114,7 +120,13 @@ class VideoServiceTest {
         catchThrowable(
             () ->
                 videoService.createVideo(
-                    "url", Set.of(Amendment.FIRST), Set.of(Participant.POLICE), null, userId));
+                    "url",
+                    Set.of(Amendment.FIRST),
+                    Set.of(Participant.POLICE),
+                    null,
+                    userId,
+                    "NEW",
+                    Collections.emptyList()));
 
     // Assert
     assertThat(thrown).isInstanceOf(VideoAlreadyExistsException.class);
@@ -147,7 +159,9 @@ class VideoServiceTest {
             Set.of(Amendment.FIRST),
             Set.of(Participant.POLICE),
             LocalDate.of(2024, 1, 2),
-            userId);
+            userId,
+            "NEW",
+            Collections.emptyList());
 
     // Assert
     assertThat(created.getYoutubeId()).isEqualTo("abc123def45");
