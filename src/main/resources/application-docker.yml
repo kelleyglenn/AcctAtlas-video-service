@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres:5432/video_service
+    username: video_service
+    password: local_dev
+  data:
+    redis:
+      host: redis
+  cloud:
+    aws:
+      sqs:
+        endpoint: http://localstack:4566
