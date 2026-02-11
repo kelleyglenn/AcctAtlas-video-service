@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -256,7 +257,8 @@ class VideoControllerTest {
     request.setVideoDate(LocalDate.of(2024, 1, 2));
 
     Video video = sampleVideo();
-    when(videoService.createVideo(any(), anySet(), anySet(), any(), any())).thenReturn(video);
+    when(videoService.createVideo(any(), anySet(), anySet(), any(), any(), any(), anyList()))
+        .thenReturn(video);
 
     // Act
     VideoDetail detail = videoController.createVideo(request).getBody();
@@ -264,7 +266,14 @@ class VideoControllerTest {
     // Assert
     assertThat(detail.getId()).isEqualTo(video.getId());
     verify(videoService)
-        .createVideo(eq(request.getYoutubeUrl().toString()), anySet(), anySet(), any(), eq(userId));
+        .createVideo(
+            eq(request.getYoutubeUrl().toString()),
+            anySet(),
+            anySet(),
+            any(),
+            eq(userId),
+            any(),
+            anyList());
   }
 
   @Test

@@ -120,6 +120,9 @@ public class VideoController implements VideosApi, VideoLocationsApi {
   @Override
   public ResponseEntity<VideoDetail> createVideo(CreateVideoRequest request) {
     UUID userId = requireCurrentUserId();
+    String trustTier = getCurrentTrustTierOrNull();
+    List<UUID> locationIds =
+        request.getLocationId() != null ? List.of(request.getLocationId()) : List.of();
 
     Video video =
         videoService.createVideo(
@@ -131,7 +134,9 @@ public class VideoController implements VideosApi, VideoLocationsApi {
                 .map(p -> Participant.valueOf(p.name()))
                 .collect(Collectors.toSet()),
             request.getVideoDate(),
-            userId);
+            userId,
+            trustTier != null ? trustTier : "NEW",
+            locationIds);
 
     if (request.getLocationId() != null) {
       videoLocationService.addLocationInternal(video.getId(), request.getLocationId(), true);

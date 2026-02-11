@@ -11,7 +11,6 @@ import com.accountabilityatlas.videoservice.exception.VideoNotFoundException;
 import com.accountabilityatlas.videoservice.repository.VideoRepository;
 import com.accountabilityatlas.videoservice.service.YouTubeService.YouTubeMetadata;
 import java.time.LocalDate;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -48,29 +47,6 @@ public class VideoService {
       return videoRepository.findBySubmittedByAndStatus(userId, status, pageable);
     }
     return videoRepository.findBySubmittedBy(userId, pageable);
-  }
-
-  /**
-   * Creates a video without event publishing. For backwards compatibility.
-   *
-   * @deprecated Use {@link #createVideo(String, Set, Set, LocalDate, UUID, String, List)} instead.
-   */
-  @Deprecated
-  @Transactional
-  public Video createVideo(
-      String youtubeUrl,
-      Set<Amendment> amendments,
-      Set<Participant> participants,
-      LocalDate videoDate,
-      UUID submittedBy) {
-    return createVideo(
-        youtubeUrl,
-        amendments,
-        participants,
-        videoDate,
-        submittedBy,
-        "NEW",
-        Collections.emptyList());
   }
 
   /**
