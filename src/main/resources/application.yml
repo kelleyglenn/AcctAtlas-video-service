@@ -34,18 +34,6 @@ spring:
       credentials:
         access-key: ${AWS_ACCESS_KEY_ID:test}
         secret-key: ${AWS_SECRET_ACCESS_KEY:test}
-    stream:
-      bindings:
-        videoSubmitted-out-0:
-          destination: video-events
-        handleVideoApproved-in-0:
-          destination: moderation-events
-          group: video-service
-        handleVideoRejected-in-0:
-          destination: moderation-events
-          group: video-service
-      function:
-        definition: handleVideoApproved;handleVideoRejected
 
 management:
   endpoints:
@@ -61,6 +49,9 @@ logging:
     com.accountabilityatlas: DEBUG
 
 app:
+  sqs:
+    video-events-queue: video-events
+    moderation-events-queue: moderation-events
   youtube:
     api-key: ${YOUTUBE_API_KEY:}
     base-url: https://www.googleapis.com/youtube/v3

@@ -10,4 +10,5 @@ import java.util.UUID;
  * @param reviewerId the ID of the moderator who approved the video
  * @param timestamp when the approval occurred
  */
-public record VideoApprovedEvent(UUID videoId, UUID reviewerId, Instant timestamp) {}
+public record VideoApprovedEvent(UUID videoId, UUID reviewerId, Instant timestamp)
+    implements ModerationEvent {}
