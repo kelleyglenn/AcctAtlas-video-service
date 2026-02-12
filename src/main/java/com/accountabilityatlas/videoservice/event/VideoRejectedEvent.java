@@ -11,4 +11,5 @@ import java.util.UUID;
  * @param reason the reason for rejection
  * @param timestamp when the rejection occurred
  */
-public record VideoRejectedEvent(UUID videoId, UUID reviewerId, String reason, Instant timestamp) {}
+public record VideoRejectedEvent(UUID videoId, UUID reviewerId, String reason, Instant timestamp)
+    implements ModerationEvent {}

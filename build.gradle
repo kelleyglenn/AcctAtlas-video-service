@@ -33,9 +33,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-cache'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
 
-    // Spring Cloud Stream with SQS
-    implementation platform('org.springframework.cloud:spring-cloud-dependencies:2024.0.0')
-    implementation 'org.springframework.cloud:spring-cloud-stream'
+    // AWS SQS
     implementation 'io.awspring.cloud:spring-cloud-aws-starter-sqs:3.3.0'
 
     // Database

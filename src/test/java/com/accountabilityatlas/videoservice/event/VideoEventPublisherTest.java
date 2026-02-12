@@ -1,52 +1,48 @@
 package com.accountabilityatlas.videoservice.event;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import com.accountabilityatlas.videoservice.domain.Amendment;
 import com.accountabilityatlas.videoservice.domain.Video;
+import io.awspring.cloud.sqs.operations.SqsTemplate;
 import java.util.Collections;
 import java.util.Set;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.cloud.stream.function.StreamBridge;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class VideoEventPublisherTest {
 
-  @Mock private StreamBridge streamBridge;
-  private VideoEventPublisher videoEventPublisher;
+  private static final String VIDEO_EVENTS_QUEUE = "video-events";
 
-  @BeforeEach
-  void setUp() {
-    videoEventPublisher = new VideoEventPublisher(streamBridge);
-  }
+  @Mock private SqsTemplate sqsTemplate;
+  @InjectMocks private VideoEventPublisher videoEventPublisher;
 
   @Test
-  void publishVideoSubmitted_validVideo_sendsToStreamBridge() {
+  void publishVideoSubmitted_validVideo_sendsToSqs() {
     // Arrange
+    ReflectionTestUtils.setField(videoEventPublisher, "videoEventsQueue", VIDEO_EVENTS_QUEUE);
     Video video = new Video();
     video.setId(UUID.randomUUID());
     video.setTitle("Test Video");
     video.setSubmittedBy(UUID.randomUUID());
     video.setAmendments(Set.of(Amendment.FIRST, Amendment.FOURTH));
     String trustTier = "NEW";
-    when(streamBridge.send(eq("videoSubmitted-out-0"), any())).thenReturn(true);
 
     // Act
     videoEventPublisher.publishVideoSubmitted(video, trustTier, Collections.emptyList());
 
     // Assert
     ArgumentCaptor<VideoSubmittedEvent> captor = ArgumentCaptor.forClass(VideoSubmittedEvent.class);
-    verify(streamBridge).send(eq("videoSubmitted-out-0"), captor.capture());
+    verify(sqsTemplate).send(eq(VIDEO_EVENTS_QUEUE), captor.capture());
 
     VideoSubmittedEvent event = captor.getValue();
     assertThat(event.videoId()).isEqualTo(video.getId());
@@ -61,20 +57,20 @@ class VideoEventPublisherTest {
   @Test
   void publishVideoSubmitted_withLocations_includesLocationsInEvent() {
     // Arrange
+    ReflectionTestUtils.setField(videoEventPublisher, "videoEventsQueue", VIDEO_EVENTS_QUEUE);
     Video video = new Video();
     video.setId(UUID.randomUUID());
     video.setTitle("Test Video");
     video.setSubmittedBy(UUID.randomUUID());
     video.setAmendments(Set.of(Amendment.SECOND));
     UUID locationId = UUID.randomUUID();
-    when(streamBridge.send(eq("videoSubmitted-out-0"), any())).thenReturn(true);
 
     // Act
     videoEventPublisher.publishVideoSubmitted(video, "TRUSTED", java.util.List.of(locationId));
 
     // Assert
     ArgumentCaptor<VideoSubmittedEvent> captor = ArgumentCaptor.forClass(VideoSubmittedEvent.class);
-    verify(streamBridge).send(eq("videoSubmitted-out-0"), captor.capture());
+    verify(sqsTemplate).send(eq(VIDEO_EVENTS_QUEUE), captor.capture());
 
     VideoSubmittedEvent event = captor.getValue();
     assertThat(event.submitterTrustTier()).isEqualTo("TRUSTED");

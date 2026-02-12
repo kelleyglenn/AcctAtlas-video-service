@@ -2,24 +2,26 @@ package com.accountabilityatlas.videoservice.event;
 
 import com.accountabilityatlas.videoservice.domain.Amendment;
 import com.accountabilityatlas.videoservice.domain.Video;
+import io.awspring.cloud.sqs.operations.SqsTemplate;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cloud.stream.function.StreamBridge;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-/** Publishes video-related events to SQS via Spring Cloud Stream. */
+/** Publishes video-related events to SQS via AWS Spring SqsTemplate. */
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class VideoEventPublisher {
 
-  private static final String VIDEO_SUBMITTED_BINDING = "videoSubmitted-out-0";
+  private final SqsTemplate sqsTemplate;
 
-  private final StreamBridge streamBridge;
+  @Value("${app.sqs.video-events-queue:video-events}")
+  private String videoEventsQueue;
 
   /**
    * Publishes a VideoSubmitted event to the video-events queue.
@@ -40,12 +42,20 @@ public class VideoEventPublisher {
             locationIds,
             Instant.now());
 
-    log.info("Publishing VideoSubmitted event for video {} to SQS", video.getId());
-    boolean sent = streamBridge.send(VIDEO_SUBMITTED_BINDING, event);
-    if (sent) {
+    log.info(
+        "Publishing VideoSubmitted event for video {} to SQS queue {}",
+        video.getId(),
+        videoEventsQueue);
+    try {
+      sqsTemplate.send(videoEventsQueue, event);
       log.debug("Published VideoSubmitted event: {}", event);
-    } else {
-      log.error("Failed to publish VideoSubmitted event for video {}", video.getId());
+    } catch (Exception e) {
+      log.error(
+          "Failed to publish VideoSubmitted event for video {}: {}",
+          video.getId(),
+          e.getMessage(),
+          e);
+      throw e;
     }
   }
 }

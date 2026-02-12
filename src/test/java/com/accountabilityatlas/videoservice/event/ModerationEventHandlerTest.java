@@ -27,7 +27,7 @@ class ModerationEventHandlerTest {
   }
 
   @Test
-  void handleVideoApproved_updatesStatusToApproved() {
+  void handleModerationEvent_videoApproved_updatesStatusToApproved() {
     // Arrange
     UUID videoId = UUID.randomUUID();
     UUID reviewerId = UUID.randomUUID();
@@ -39,14 +39,14 @@ class ModerationEventHandlerTest {
     when(videoService.updateVideoStatus(videoId, VideoStatus.APPROVED)).thenReturn(video);
 
     // Act
-    handler.handleVideoApproved().accept(event);
+    handler.handleModerationEvent(event);
 
     // Assert
     verify(videoService).updateVideoStatus(videoId, VideoStatus.APPROVED);
   }
 
   @Test
-  void handleVideoRejected_updatesStatusToRejected() {
+  void handleModerationEvent_videoRejected_updatesStatusToRejected() {
     // Arrange
     UUID videoId = UUID.randomUUID();
     UUID reviewerId = UUID.randomUUID();
@@ -59,7 +59,7 @@ class ModerationEventHandlerTest {
     when(videoService.updateVideoStatus(videoId, VideoStatus.REJECTED)).thenReturn(video);
 
     // Act
-    handler.handleVideoRejected().accept(event);
+    handler.handleModerationEvent(event);
 
     // Assert
     verify(videoService).updateVideoStatus(videoId, VideoStatus.REJECTED);
