@@ -1,8 +1,11 @@
 package com.accountabilityatlas.videoservice.event;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.accountabilityatlas.videoservice.domain.Amendment;
 import com.accountabilityatlas.videoservice.domain.Video;
@@ -75,5 +78,27 @@ class VideoEventPublisherTest {
     VideoSubmittedEvent event = captor.getValue();
     assertThat(event.submitterTrustTier()).isEqualTo("TRUSTED");
     assertThat(event.locationIds()).containsExactly(locationId);
+  }
+
+  @Test
+  void publishVideoSubmitted_sqsFailure_rethrowsException() {
+    // Arrange
+    ReflectionTestUtils.setField(videoEventPublisher, "videoEventsQueue", VIDEO_EVENTS_QUEUE);
+    Video video = new Video();
+    video.setId(UUID.randomUUID());
+    video.setTitle("Test Video");
+    video.setSubmittedBy(UUID.randomUUID());
+    video.setAmendments(Set.of(Amendment.FIRST));
+
+    RuntimeException sqsException = new RuntimeException("SQS connection failed");
+    when(sqsTemplate.send(eq(VIDEO_EVENTS_QUEUE), any(VideoSubmittedEvent.class)))
+        .thenThrow(sqsException);
+
+    // Act & Assert
+    assertThatThrownBy(
+            () ->
+                videoEventPublisher.publishVideoSubmitted(
+                    video, "NEW", java.util.Collections.emptyList()))
+        .isSameAs(sqsException);
   }
 }
