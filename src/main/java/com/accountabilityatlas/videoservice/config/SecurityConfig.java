@@ -1,18 +1,13 @@
 package com.accountabilityatlas.videoservice.config;
 
-import java.time.Instant;
-import java.util.Map;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
@@ -40,23 +35,12 @@ public class SecurityConfig {
             auth ->
                 auth.requestMatchers("/actuator/**")
                     .permitAll()
-                    .requestMatchers(HttpMethod.GET, "/videos/**")
+                    .requestMatchers(HttpMethod.GET, "/videos", "/videos/**")
                     .permitAll()
+                    // All other requests are permitted - the gateway handles auth
+                    // and passes user info in X-User-Id, X-User-Email, X-Trust-Tier headers
                     .anyRequest()
-                    .authenticated())
-        .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {}));
+                    .permitAll());
     return http.build();
-  }
-
-  @Bean
-  @Profile({"local", "docker"})
-  public JwtDecoder localJwtDecoder() {
-    return token ->
-        new Jwt(
-            token,
-            Instant.now(),
-            Instant.now().plusSeconds(3600),
-            Map.of("alg", "none"),
-            Map.of("sub", "local-user"));
   }
 }
