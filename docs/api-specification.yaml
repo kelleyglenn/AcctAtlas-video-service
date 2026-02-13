@@ -658,7 +658,6 @@ components:
         youtubeUrl:
           type: string
           format: uri
-          maxLength: 200
           description: |
             Full YouTube URL. Supported formats:
             - https://www.youtube.com/watch?v=VIDEO_ID
