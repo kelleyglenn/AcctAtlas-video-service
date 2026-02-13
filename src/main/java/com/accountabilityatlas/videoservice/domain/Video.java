@@ -11,8 +11,6 @@ import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "videos", schema = "videos")
@@ -83,7 +81,6 @@ public class Video {
   private Instant createdAt = Instant.now();
 
   @Setter(AccessLevel.NONE)
-  @JdbcTypeCode(SqlTypes.OTHER)
   @Column(
       name = "sys_period",
       insertable = false,
