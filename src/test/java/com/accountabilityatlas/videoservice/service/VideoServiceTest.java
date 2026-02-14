@@ -58,13 +58,74 @@ class VideoServiceTest {
   @Test
   void getVideo_missingId_throwsNotFound() {
     // Arrange
-    when(videoRepository.findById(videoId)).thenReturn(Optional.empty());
+    when(videoRepository.findByIdWithLocations(videoId)).thenReturn(Optional.empty());
 
     // Act
     Throwable thrown = catchThrowable(() -> videoService.getVideo(videoId));
 
     // Assert
     assertThat(thrown).isInstanceOf(VideoNotFoundException.class);
+  }
+
+  @Test
+  void findByYoutubeId_exists_returnsVideo() {
+    // Arrange
+    Video video = new Video();
+    video.setId(videoId);
+    video.setYoutubeId("abc123def45");
+    when(videoRepository.findByYoutubeId("abc123def45")).thenReturn(Optional.of(video));
+
+    // Act
+    Optional<Video> result = videoService.findByYoutubeId("abc123def45");
+
+    // Assert
+    assertThat(result).isPresent();
+    assertThat(result.get().getId()).isEqualTo(videoId);
+  }
+
+  @Test
+  void findByYoutubeId_notFound_returnsEmpty() {
+    // Arrange
+    when(videoRepository.findByYoutubeId("nonexistent")).thenReturn(Optional.empty());
+
+    // Act
+    Optional<Video> result = videoService.findByYoutubeId("nonexistent");
+
+    // Assert
+    assertThat(result).isEmpty();
+  }
+
+  @Test
+  void findByYoutubeId_videoWithNullFields_returnsVideo() {
+    // Arrange — video with many nullable fields set to null
+    Video video = new Video();
+    video.setId(videoId);
+    video.setYoutubeId("abc123def45");
+    video.setTitle("Title");
+    video.setDescription(null);
+    video.setThumbnailUrl(null);
+    video.setDurationSeconds(null);
+    video.setChannelId(null);
+    video.setChannelName(null);
+    video.setPublishedAt(null);
+    video.setVideoDate(null);
+    video.setStatus(VideoStatus.PENDING);
+    video.setSubmittedBy(userId);
+    when(videoRepository.findByYoutubeId("abc123def45")).thenReturn(Optional.of(video));
+
+    // Act
+    Optional<Video> result = videoService.findByYoutubeId("abc123def45");
+
+    // Assert
+    assertThat(result).isPresent();
+    Video found = result.get();
+    assertThat(found.getYoutubeId()).isEqualTo("abc123def45");
+    assertThat(found.getDescription()).isNull();
+    assertThat(found.getThumbnailUrl()).isNull();
+    assertThat(found.getDurationSeconds()).isNull();
+    assertThat(found.getChannelId()).isNull();
+    assertThat(found.getPublishedAt()).isNull();
+    assertThat(found.getVideoDate()).isNull();
   }
 
   @Test

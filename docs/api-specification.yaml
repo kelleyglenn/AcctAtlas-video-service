@@ -162,6 +162,51 @@ paths:
         '429':
           $ref: '#/components/responses/RateLimited'
 
+  /videos/preview:
+    get:
+      operationId: previewVideo
+      summary: Preview YouTube video metadata
+      description: |
+        Returns YouTube metadata for the given URL without creating a video record.
+        Useful for previewing video details before submission.
+        Also indicates whether the video has already been submitted.
+      tags: [Videos]
+      security: []
+      parameters:
+        - name: youtubeUrl
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Full YouTube URL to preview
+      responses:
+        '200':
+          description: YouTube video metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoPreview'
+        '400':
+          description: Invalid YouTube URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "INVALID_YOUTUBE_URL"
+                message: "Invalid YouTube URL: https://example.com/not-a-video"
+                traceId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        '422':
+          description: YouTube video not found or unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "YOUTUBE_VIDEO_UNAVAILABLE"
+                message: "The YouTube video is private, deleted, or does not exist"
+                traceId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+
   /videos/{id}:
     get:
       operationId: getVideo
@@ -576,6 +621,49 @@ components:
                 $ref: '#/components/schemas/VideoLocation'
             submitter:
               $ref: '#/components/schemas/SubmitterSummary'
+
+    VideoPreview:
+      type: object
+      description: YouTube video metadata preview without creating a record
+      required: [youtubeId, title, thumbnailUrl, channelId, channelName, publishedAt, alreadyExists]
+      properties:
+        youtubeId:
+          type: string
+          maxLength: 20
+          pattern: "^[\\w-]{11}$"
+          description: YouTube video ID (11 characters)
+        title:
+          type: string
+          maxLength: 500
+        description:
+          type: string
+          nullable: true
+        thumbnailUrl:
+          type: string
+          format: uri
+          maxLength: 500
+        durationSeconds:
+          type: integer
+          minimum: 0
+          nullable: true
+        channelId:
+          type: string
+          maxLength: 50
+        channelName:
+          type: string
+          maxLength: 255
+        publishedAt:
+          type: string
+          format: date-time
+          description: When the video was published on YouTube
+        alreadyExists:
+          type: boolean
+          description: Whether this YouTube video has already been submitted
+        existingVideoId:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID of the existing video record, if alreadyExists is true
 
     VideoLocation:
       type: object

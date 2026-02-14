@@ -8,6 +8,8 @@ import com.accountabilityatlas.videoservice.domain.VideoStatus;
 import com.accountabilityatlas.videoservice.exception.UnauthorizedException;
 import com.accountabilityatlas.videoservice.service.VideoLocationService;
 import com.accountabilityatlas.videoservice.service.VideoService;
+import com.accountabilityatlas.videoservice.service.YouTubeService;
+import com.accountabilityatlas.videoservice.service.YouTubeService.YouTubeMetadata;
 import com.accountabilityatlas.videoservice.web.api.VideoLocationsApi;
 import com.accountabilityatlas.videoservice.web.api.VideosApi;
 import com.accountabilityatlas.videoservice.web.model.*;
@@ -34,6 +36,7 @@ public class VideoController implements VideosApi, VideoLocationsApi {
 
   private final VideoService videoService;
   private final VideoLocationService videoLocationService;
+  private final YouTubeService youTubeService;
 
   /**
    * Fetch a single video by id, enforcing visibility rules based on the caller's identity and trust
@@ -182,6 +185,40 @@ public class VideoController implements VideosApi, VideoLocationsApi {
     UUID userId = requireCurrentUserId();
     videoService.deleteVideo(id, userId);
     return ResponseEntity.noContent().build();
+  }
+
+  /** Preview YouTube video metadata without creating a video record. */
+  @Override
+  public ResponseEntity<VideoPreview> previewVideo(String youtubeUrl) {
+    String videoId = youTubeService.extractVideoId(youtubeUrl);
+    YouTubeMetadata metadata = youTubeService.fetchMetadata(videoId);
+
+    VideoPreview preview = new VideoPreview();
+    preview.setYoutubeId(metadata.videoId());
+    preview.setTitle(metadata.title());
+    preview.setDescription(metadata.description());
+    preview.setThumbnailUrl(toUriOrNull(metadata.thumbnailUrl()));
+    preview.setDurationSeconds(metadata.durationSeconds());
+    preview.setChannelId(metadata.channelId());
+    preview.setChannelName(metadata.channelName());
+    preview.setPublishedAt(
+        metadata.publishedAt() != null
+            ? metadata.publishedAt().atOffset(java.time.ZoneOffset.UTC)
+            : null);
+
+    videoService
+        .findByYoutubeId(videoId)
+        .ifPresentOrElse(
+            existing -> {
+              preview.setAlreadyExists(true);
+              preview.setExistingVideoId(existing.getId());
+            },
+            () -> {
+              preview.setAlreadyExists(false);
+              preview.setExistingVideoId(null);
+            });
+
+    return ResponseEntity.ok(preview);
   }
 
   /** Fetch locations linked to a video by id. */
