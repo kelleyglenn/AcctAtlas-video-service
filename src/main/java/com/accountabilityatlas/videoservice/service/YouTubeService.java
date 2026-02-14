@@ -5,6 +5,7 @@ import com.accountabilityatlas.videoservice.exception.InvalidYouTubeUrlException
 import com.accountabilityatlas.videoservice.exception.YouTubeVideoNotFoundException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
+import java.io.Serializable;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -40,7 +41,8 @@ public class YouTubeService {
       Integer durationSeconds,
       String channelId,
       String channelName,
-      Instant publishedAt) {}
+      Instant publishedAt)
+      implements Serializable {}
 
   public String extractVideoId(String url) {
     if (url == null || url.isBlank()) {
