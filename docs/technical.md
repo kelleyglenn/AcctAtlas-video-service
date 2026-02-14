@@ -29,7 +29,31 @@ The Video Service is the core content management service for AccountabilityAtlas
 - **PostgreSQL**: Video records, video-location associations
 - **YouTube Data API**: Video metadata, thumbnail URLs, validation
 - **location-service**: Location validation (REST)
+- **user-service**: JWT validation via JWKS endpoint
 - **SQS**: Event publishing
+
+## JWT Authentication
+
+The video-service validates JWTs issued by user-service using Spring's OAuth2 Resource Server. It fetches the RSA public key from user-service's JWKS endpoint to verify token signatures.
+
+### Configuration
+
+```yaml
+# application-local.yml / application-docker.yml
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://user-service:8081/.well-known/jwks.json
+```
+
+### Behavior
+
+- **GET endpoints** (list/view videos): Accessible without authentication. If a Bearer token is present, it is decoded to provide user context (e.g., for visibility rules).
+- **POST/PUT/DELETE endpoints**: Require a valid JWT. The controller reads `sub` (user ID) and `trustTier` from the token claims via `SecurityContextHolder`.
+- **Invalid/expired tokens**: Return 401 Unauthorized.
+- **Internal endpoints** (`/internal/**`): No JWT validation — access controlled by IP/CIDR allowlist.
 
 ## Documentation Index
 
