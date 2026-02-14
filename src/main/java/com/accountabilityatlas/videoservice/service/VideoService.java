@@ -30,7 +30,9 @@ public class VideoService {
 
   @Transactional(readOnly = true)
   public Video getVideo(UUID id) {
-    return findVideoOrThrow(id);
+    return videoRepository
+        .findByIdWithLocations(id)
+        .orElseThrow(() -> new VideoNotFoundException(id));
   }
 
   @Transactional(readOnly = true)

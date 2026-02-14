@@ -58,7 +58,7 @@ class VideoServiceTest {
   @Test
   void getVideo_missingId_throwsNotFound() {
     // Arrange
-    when(videoRepository.findById(videoId)).thenReturn(Optional.empty());
+    when(videoRepository.findByIdWithLocations(videoId)).thenReturn(Optional.empty());
 
     // Act
     Throwable thrown = catchThrowable(() -> videoService.getVideo(videoId));
