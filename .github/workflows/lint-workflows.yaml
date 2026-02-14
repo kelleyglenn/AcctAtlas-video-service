@@ -3,7 +3,7 @@ name: Lint Workflows
 on:
   push:
     branches:
-      - main
+      - master
   pull_request:
 
 jobs:
@@ -16,4 +16,4 @@ jobs:
       - name: Run actionlint
         uses: raven-actions/actionlint@v2
         with:
-          files: ".github/workflows/*.yml"
+          files: ".github/workflows/*.yaml"
