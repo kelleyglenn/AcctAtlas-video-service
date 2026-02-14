@@ -7,6 +7,11 @@ spring:
     locations:
       - classpath:db/migration
       - classpath:db/devdata
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${USER_SERVICE_JWKS_URL:http://user-service:8081/.well-known/jwks.json}
   data:
     redis:
       host: redis

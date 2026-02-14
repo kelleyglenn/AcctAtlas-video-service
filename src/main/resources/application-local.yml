@@ -7,6 +7,11 @@ spring:
     locations:
       - classpath:db/migration
       - classpath:db/devdata
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:8081/.well-known/jwks.json
   cloud:
     aws:
       sqs:
