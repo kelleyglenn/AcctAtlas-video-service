@@ -34,7 +34,7 @@ The Video Service is the core content management service for AccountabilityAtlas
 
 ## JWT Authentication
 
-The video-service validates JWTs issued by user-service using Spring's OAuth2 Resource Server. It fetches the RSA public key from user-service's JWKS endpoint to verify token signatures.
+The video-service validates JWTs issued by user-service by fetching the RSA public key from user-service's JWKS endpoint. It uses a **lenient JWT filter** (`LenientJwtAuthenticationFilter`) that decodes valid tokens but treats invalid/expired tokens as anonymous rather than returning 401.
 
 ### Configuration
 
@@ -50,10 +50,14 @@ spring:
 
 ### Behavior
 
-- **GET endpoints** (list/view videos): Accessible without authentication. If a Bearer token is present, it is decoded to provide user context (e.g., for visibility rules).
-- **POST/PUT/DELETE endpoints**: Require a valid JWT. The controller reads `sub` (user ID) and `trustTier` from the token claims via `SecurityContextHolder`.
-- **Invalid/expired tokens**: Return 401 Unauthorized.
-- **Internal endpoints** (`/internal/**`): No JWT validation — access controlled by IP/CIDR allowlist.
+- **Valid token**: Decoded via JWKS; `Jwt` principal set in `SecurityContext`. Controller reads `sub` (user ID) and `trustTier` from claims.
+- **Invalid/expired token**: Treated as anonymous (no `Jwt` principal). Public endpoints still work; authenticated endpoints return 403 from controller-level checks (`requireCurrentUserId()`).
+- **No token**: Anonymous access. Same as invalid token.
+- **Internal endpoints** (`/internal/**`): No JWT filter — access controlled by IP/CIDR allowlist.
+
+### Why not `oauth2ResourceServer()`?
+
+Spring's default `BearerTokenAuthenticationFilter` returns 401 for any invalid token, even on `permitAll()` endpoints. Since all video-service endpoints use `permitAll()` (auth is enforced at the controller level), an invalid token would block public endpoints like preview. The lenient filter avoids this by catching `JwtException` and continuing as anonymous.
 
 ## Documentation Index
 
