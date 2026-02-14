@@ -12,14 +12,19 @@ import com.accountabilityatlas.videoservice.domain.Participant;
 import com.accountabilityatlas.videoservice.domain.Video;
 import com.accountabilityatlas.videoservice.domain.VideoLocation;
 import com.accountabilityatlas.videoservice.domain.VideoStatus;
+import com.accountabilityatlas.videoservice.exception.InvalidYouTubeUrlException;
 import com.accountabilityatlas.videoservice.exception.UnauthorizedException;
+import com.accountabilityatlas.videoservice.repository.VideoRepository;
 import com.accountabilityatlas.videoservice.service.VideoLocationService;
 import com.accountabilityatlas.videoservice.service.VideoService;
+import com.accountabilityatlas.videoservice.service.YouTubeService;
+import com.accountabilityatlas.videoservice.service.YouTubeService.YouTubeMetadata;
 import com.accountabilityatlas.videoservice.web.model.*;
 import java.net.URI;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -41,6 +46,8 @@ class VideoControllerTest {
 
   @Mock private VideoService videoService;
   @Mock private VideoLocationService videoLocationService;
+  @Mock private YouTubeService youTubeService;
+  @Mock private VideoRepository videoRepository;
 
   @InjectMocks private VideoController videoController;
 
@@ -389,6 +396,82 @@ class VideoControllerTest {
 
     // Assert
     assertThat(thrown).isInstanceOf(UnauthorizedException.class);
+  }
+
+  @Test
+  void previewVideo_validUrl_returnsMetadata() {
+    // Arrange
+    String url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+    String videoId = "dQw4w9WgXcQ";
+    YouTubeMetadata metadata =
+        new YouTubeMetadata(
+            videoId,
+            "Test Title",
+            "Test Description",
+            "http://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+            212,
+            "UCuAXFkgsw1L7xaCfnd5JJOw",
+            "Test Channel",
+            Instant.parse("2024-06-01T12:00:00Z"));
+    when(youTubeService.extractVideoId(url)).thenReturn(videoId);
+    when(youTubeService.fetchMetadata(videoId)).thenReturn(metadata);
+    when(videoRepository.findByYoutubeId(videoId)).thenReturn(Optional.empty());
+
+    // Act
+    VideoPreview preview = videoController.previewVideo(url).getBody();
+
+    // Assert
+    assertNotNull(preview);
+    assertThat(preview.getYoutubeId()).isEqualTo(videoId);
+    assertThat(preview.getTitle()).isEqualTo("Test Title");
+    assertThat(preview.getDescription()).isEqualTo("Test Description");
+    assertThat(preview.getDurationSeconds()).isEqualTo(212);
+    assertThat(preview.getChannelId()).isEqualTo("UCuAXFkgsw1L7xaCfnd5JJOw");
+    assertThat(preview.getChannelName()).isEqualTo("Test Channel");
+    assertThat(preview.getAlreadyExists()).isFalse();
+    assertThat(preview.getExistingVideoId()).isNull();
+  }
+
+  @Test
+  void previewVideo_alreadyExists_returnsExistingVideoId() {
+    // Arrange
+    String url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+    String videoId = "dQw4w9WgXcQ";
+    YouTubeMetadata metadata =
+        new YouTubeMetadata(
+            videoId,
+            "Test Title",
+            null,
+            "http://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+            212,
+            "UCuAXFkgsw1L7xaCfnd5JJOw",
+            "Test Channel",
+            Instant.parse("2024-06-01T12:00:00Z"));
+    Video existingVideo = sampleVideo();
+    when(youTubeService.extractVideoId(url)).thenReturn(videoId);
+    when(youTubeService.fetchMetadata(videoId)).thenReturn(metadata);
+    when(videoRepository.findByYoutubeId(videoId)).thenReturn(Optional.of(existingVideo));
+
+    // Act
+    VideoPreview preview = videoController.previewVideo(url).getBody();
+
+    // Assert
+    assertNotNull(preview);
+    assertThat(preview.getAlreadyExists()).isTrue();
+    assertThat(preview.getExistingVideoId()).isEqualTo(existingVideo.getId());
+  }
+
+  @Test
+  void previewVideo_invalidUrl_throwsInvalidYouTubeUrl() {
+    // Arrange
+    String url = "https://example.com/not-a-video";
+    when(youTubeService.extractVideoId(url)).thenThrow(new InvalidYouTubeUrlException(url));
+
+    // Act
+    Throwable thrown = catchThrowable(() -> videoController.previewVideo(url));
+
+    // Assert
+    assertThat(thrown).isInstanceOf(InvalidYouTubeUrlException.class);
   }
 
   private void setAuth() {
