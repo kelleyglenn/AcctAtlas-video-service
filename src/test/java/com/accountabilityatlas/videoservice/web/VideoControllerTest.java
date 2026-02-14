@@ -14,7 +14,6 @@ import com.accountabilityatlas.videoservice.domain.VideoLocation;
 import com.accountabilityatlas.videoservice.domain.VideoStatus;
 import com.accountabilityatlas.videoservice.exception.InvalidYouTubeUrlException;
 import com.accountabilityatlas.videoservice.exception.UnauthorizedException;
-import com.accountabilityatlas.videoservice.repository.VideoRepository;
 import com.accountabilityatlas.videoservice.service.VideoLocationService;
 import com.accountabilityatlas.videoservice.service.VideoService;
 import com.accountabilityatlas.videoservice.service.YouTubeService;
@@ -47,7 +46,6 @@ class VideoControllerTest {
   @Mock private VideoService videoService;
   @Mock private VideoLocationService videoLocationService;
   @Mock private YouTubeService youTubeService;
-  @Mock private VideoRepository videoRepository;
 
   @InjectMocks private VideoController videoController;
 
@@ -415,7 +413,7 @@ class VideoControllerTest {
             Instant.parse("2024-06-01T12:00:00Z"));
     when(youTubeService.extractVideoId(url)).thenReturn(videoId);
     when(youTubeService.fetchMetadata(videoId)).thenReturn(metadata);
-    when(videoRepository.findByYoutubeId(videoId)).thenReturn(Optional.empty());
+    when(videoService.findByYoutubeId(videoId)).thenReturn(Optional.empty());
 
     // Act
     VideoPreview preview = videoController.previewVideo(url).getBody();
@@ -450,7 +448,7 @@ class VideoControllerTest {
     Video existingVideo = sampleVideo();
     when(youTubeService.extractVideoId(url)).thenReturn(videoId);
     when(youTubeService.fetchMetadata(videoId)).thenReturn(metadata);
-    when(videoRepository.findByYoutubeId(videoId)).thenReturn(Optional.of(existingVideo));
+    when(videoService.findByYoutubeId(videoId)).thenReturn(Optional.of(existingVideo));
 
     // Act
     VideoPreview preview = videoController.previewVideo(url).getBody();

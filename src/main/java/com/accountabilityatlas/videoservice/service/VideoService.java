@@ -12,6 +12,7 @@ import com.accountabilityatlas.videoservice.repository.VideoRepository;
 import com.accountabilityatlas.videoservice.service.YouTubeService.YouTubeMetadata;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,11 @@ public class VideoService {
     return videoRepository
         .findByIdWithLocations(id)
         .orElseThrow(() -> new VideoNotFoundException(id));
+  }
+
+  @Transactional(readOnly = true)
+  public Optional<Video> findByYoutubeId(String youtubeId) {
+    return videoRepository.findByYoutubeId(youtubeId);
   }
 
   @Transactional(readOnly = true)

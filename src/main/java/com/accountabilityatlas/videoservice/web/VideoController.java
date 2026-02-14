@@ -6,7 +6,6 @@ import com.accountabilityatlas.videoservice.domain.Video;
 import com.accountabilityatlas.videoservice.domain.VideoLocation;
 import com.accountabilityatlas.videoservice.domain.VideoStatus;
 import com.accountabilityatlas.videoservice.exception.UnauthorizedException;
-import com.accountabilityatlas.videoservice.repository.VideoRepository;
 import com.accountabilityatlas.videoservice.service.VideoLocationService;
 import com.accountabilityatlas.videoservice.service.VideoService;
 import com.accountabilityatlas.videoservice.service.YouTubeService;
@@ -38,7 +37,6 @@ public class VideoController implements VideosApi, VideoLocationsApi {
   private final VideoService videoService;
   private final VideoLocationService videoLocationService;
   private final YouTubeService youTubeService;
-  private final VideoRepository videoRepository;
 
   /**
    * Fetch a single video by id, enforcing visibility rules based on the caller's identity and trust
@@ -208,7 +206,7 @@ public class VideoController implements VideosApi, VideoLocationsApi {
             ? metadata.publishedAt().atOffset(java.time.ZoneOffset.UTC)
             : null);
 
-    videoRepository
+    videoService
         .findByYoutubeId(videoId)
         .ifPresentOrElse(
             existing -> {
