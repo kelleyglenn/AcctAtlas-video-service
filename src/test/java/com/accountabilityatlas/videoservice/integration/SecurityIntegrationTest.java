@@ -1,12 +1,18 @@
 package com.accountabilityatlas.videoservice.integration;
 
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.accountabilityatlas.videoservice.service.YouTubeService;
+import com.accountabilityatlas.videoservice.service.YouTubeService.YouTubeMetadata;
 import io.awspring.cloud.sqs.operations.SqsTemplate;
 import java.time.Instant;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -83,6 +89,24 @@ class SecurityIntegrationTest {
 
   @MockitoBean private SqsTemplate sqsTemplate;
 
+  @MockitoBean private YouTubeService youTubeService;
+
+  @BeforeEach
+  void setUpMocks() {
+    when(youTubeService.extractVideoId(anyString())).thenReturn("dQw4w9WgXcQ");
+    when(youTubeService.fetchMetadata("dQw4w9WgXcQ"))
+        .thenReturn(
+            new YouTubeMetadata(
+                "dQw4w9WgXcQ",
+                "Test Video",
+                "Test Description",
+                "https://img.youtube.com/vi/dQw4w9WgXcQ/0.jpg",
+                212,
+                "channel-123",
+                "Test Channel",
+                Instant.parse("2024-01-01T00:00:00Z")));
+  }
+
   /** GET /videos without any auth header should return 200 (public endpoint). */
   @Test
   void getVideos_withoutAuth_returns200() throws Exception {
@@ -145,6 +169,25 @@ class SecurityIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(VALID_CREATE_VIDEO_BODY))
         .andExpect(status().isForbidden());
+  }
+
+  /**
+   * POST /videos with a valid token should create the video. The authenticated user's identity is
+   * extracted from the JWT and the video is persisted with PENDING status.
+   */
+  @Test
+  void postVideos_withValidToken_createsVideo() throws Exception {
+    mockMvc
+        .perform(
+            post("/videos")
+                .header("Authorization", "Bearer valid-token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(VALID_CREATE_VIDEO_BODY))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.youtubeId").value("dQw4w9WgXcQ"))
+        .andExpect(jsonPath("$.title").value("Test Video"))
+        .andExpect(jsonPath("$.status").value("PENDING"))
+        .andExpect(jsonPath("$.submittedBy").value(TEST_USER_ID));
   }
 
   /** GET /actuator/health should return 200 without any auth. */

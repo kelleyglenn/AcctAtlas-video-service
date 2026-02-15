@@ -1,11 +1,14 @@
 package com.accountabilityatlas.videoservice.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import jakarta.servlet.FilterChain;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -41,6 +45,15 @@ class LenientJwtAuthenticationFilterTest {
             .build();
     when(jwtDecoder.decode("valid-token")).thenReturn(jwt);
 
+    AtomicReference<Authentication> captured = new AtomicReference<>();
+    doAnswer(
+            invocation -> {
+              captured.set(SecurityContextHolder.getContext().getAuthentication());
+              return null;
+            })
+        .when(filterChain)
+        .doFilter(any(), any());
+
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.addHeader("Authorization", "Bearer valid-token");
     MockHttpServletResponse response = new MockHttpServletResponse();
@@ -50,9 +63,9 @@ class LenientJwtAuthenticationFilterTest {
     // Act
     filter.doFilterInternal(request, response, filterChain);
 
-    // Assert
-    assertThat(SecurityContextHolder.getContext().getAuthentication())
-        .isInstanceOf(JwtAuthenticationToken.class);
+    // Assert: auth was set during filter chain, cleared after
+    assertThat(captured.get()).isInstanceOf(JwtAuthenticationToken.class);
+    assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
     verify(filterChain).doFilter(request, response);
   }
 
@@ -121,6 +134,15 @@ class LenientJwtAuthenticationFilterTest {
             .build();
     when(jwtDecoder.decode("valid-token")).thenReturn(jwt);
 
+    AtomicReference<Authentication> captured = new AtomicReference<>();
+    doAnswer(
+            invocation -> {
+              captured.set(SecurityContextHolder.getContext().getAuthentication());
+              return null;
+            })
+        .when(filterChain)
+        .doFilter(any(), any());
+
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.addHeader("Authorization", "Bearer valid-token");
     MockHttpServletResponse response = new MockHttpServletResponse();
@@ -130,9 +152,8 @@ class LenientJwtAuthenticationFilterTest {
     // Act
     filter.doFilterInternal(request, response, filterChain);
 
-    // Assert
-    JwtAuthenticationToken authentication =
-        (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+    // Assert: principal was correct during filter chain execution
+    JwtAuthenticationToken authentication = (JwtAuthenticationToken) captured.get();
     assertThat(authentication).isNotNull();
     assertThat(authentication.getToken().getSubject()).isEqualTo("user-123");
     verify(filterChain).doFilter(request, response);
