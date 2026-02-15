@@ -27,6 +27,11 @@ spring:
     redis:
       host: ${SPRING_DATA_REDIS_HOST:localhost}
       port: ${SPRING_DATA_REDIS_PORT:6379}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${USER_SERVICE_JWKS_URL:http://localhost:8081/.well-known/jwks.json}
   cloud:
     aws:
       region:

@@ -9,10 +9,17 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+  private final LenientJwtAuthenticationFilter lenientJwtAuthenticationFilter;
+
+  public SecurityConfig(LenientJwtAuthenticationFilter lenientJwtAuthenticationFilter) {
+    this.lenientJwtAuthenticationFilter = lenientJwtAuthenticationFilter;
+  }
 
   @Bean
   @Order(1)
@@ -37,10 +44,10 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.GET, "/videos", "/videos/**")
                     .permitAll()
-                    // All other requests are permitted - the gateway handles auth
-                    // and passes user info in X-User-Id, X-User-Email, X-Trust-Tier headers
                     .anyRequest()
-                    .permitAll());
+                    .permitAll())
+        .addFilterBefore(
+            lenientJwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
     return http.build();
   }
 }

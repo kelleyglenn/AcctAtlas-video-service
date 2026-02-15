@@ -29,7 +29,35 @@ The Video Service is the core content management service for AccountabilityAtlas
 - **PostgreSQL**: Video records, video-location associations
 - **YouTube Data API**: Video metadata, thumbnail URLs, validation
 - **location-service**: Location validation (REST)
+- **user-service**: JWT validation via JWKS endpoint
 - **SQS**: Event publishing
+
+## JWT Authentication
+
+The video-service validates JWTs issued by user-service by fetching the RSA public key from user-service's JWKS endpoint. It uses a **lenient JWT filter** (`LenientJwtAuthenticationFilter`) that decodes valid tokens but treats invalid/expired tokens as anonymous rather than returning 401.
+
+### Configuration
+
+```yaml
+# application-local.yml / application-docker.yml
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://user-service:8081/.well-known/jwks.json
+```
+
+### Behavior
+
+- **Valid token**: Decoded via JWKS; `Jwt` principal set in `SecurityContext`. Controller reads `sub` (user ID) and `trustTier` from claims.
+- **Invalid/expired token**: Treated as anonymous (no `Jwt` principal). Public endpoints still work; authenticated endpoints return 403 from controller-level checks (`requireCurrentUserId()`).
+- **No token**: Anonymous access. Same as invalid token.
+- **Internal endpoints** (`/internal/**`): No JWT filter — access controlled by IP/CIDR allowlist.
+
+### Why not `oauth2ResourceServer()`?
+
+Spring's default `BearerTokenAuthenticationFilter` returns 401 for any invalid token, even on `permitAll()` endpoints. Since all video-service endpoints use `permitAll()` (auth is enforced at the controller level), an invalid token would block public endpoints like preview. The lenient filter avoids this by catching `JwtException` and continuing as anonymous.
 
 ## Documentation Index
 
