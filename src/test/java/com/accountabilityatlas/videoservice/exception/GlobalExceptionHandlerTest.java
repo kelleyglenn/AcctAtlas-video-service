@@ -2,10 +2,15 @@ package com.accountabilityatlas.videoservice.exception;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Path;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -127,5 +132,45 @@ class GlobalExceptionHandlerTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     assertThat(response.getBody().code()).isEqualTo("VALIDATION_ERROR");
     assertThat(response.getBody().details()).hasSize(1);
+  }
+
+  @Test
+  void handleConstraintViolation_violations_returnsBadRequestWithDetails() {
+    // Arrange
+    @SuppressWarnings("unchecked")
+    ConstraintViolation<Object> violation = org.mockito.Mockito.mock(ConstraintViolation.class);
+    Path path = org.mockito.Mockito.mock(Path.class);
+    org.mockito.Mockito.when(path.toString()).thenReturn("amendments");
+    org.mockito.Mockito.when(violation.getPropertyPath()).thenReturn(path);
+    org.mockito.Mockito.when(violation.getMessage()).thenReturn("must not be empty");
+    ConstraintViolationException ex = new ConstraintViolationException(Set.of(violation));
+
+    // Act
+    ResponseEntity<GlobalExceptionHandler.ErrorResponse> response =
+        handler.handleConstraintViolation(ex);
+
+    // Assert
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody().code()).isEqualTo("VALIDATION_ERROR");
+    assertThat(response.getBody().details()).hasSize(1);
+    assertThat(response.getBody().details().getFirst().field()).isEqualTo("amendments");
+  }
+
+  @Test
+  void handleMessageNotReadable_malformedBody_returnsBadRequest() {
+    // Arrange
+    HttpMessageNotReadableException ex =
+        new HttpMessageNotReadableException(
+            "Could not read JSON", (org.springframework.http.HttpInputMessage) null);
+
+    // Act
+    ResponseEntity<GlobalExceptionHandler.ErrorResponse> response =
+        handler.handleMessageNotReadable(ex);
+
+    // Assert
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody().code()).isEqualTo("VALIDATION_ERROR");
+    assertThat(response.getBody().message()).isEqualTo("Malformed or missing request body");
+    assertThat(response.getBody().details()).isNull();
   }
 }

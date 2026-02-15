@@ -190,6 +190,95 @@ class SecurityIntegrationTest {
         .andExpect(jsonPath("$.submittedBy").value(TEST_USER_ID));
   }
 
+  /**
+   * POST /videos with an empty JSON body should return 400 with a VALIDATION_ERROR code. The
+   * MethodArgumentNotValidException is caught by GlobalExceptionHandler because required fields are
+   * missing.
+   */
+  @Test
+  void postVideos_emptyBody_returns400() throws Exception {
+    mockMvc
+        .perform(
+            post("/videos")
+                .header("Authorization", "Bearer valid-token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+  }
+
+  /**
+   * POST /videos with empty amendments array should return 400. The Size(min=1) constraint on the
+   * amendments field triggers MethodArgumentNotValidException.
+   */
+  @Test
+  void postVideos_emptyAmendments_returns400() throws Exception {
+    // Arrange
+    String body =
+        """
+        {
+          "youtubeUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+          "amendments": [],
+          "participants": ["POLICE"]
+        }
+        """;
+
+    // Act & Assert
+    mockMvc
+        .perform(
+            post("/videos")
+                .header("Authorization", "Bearer valid-token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.details").isArray())
+        .andExpect(jsonPath("$.details[0].field").value("amendments"));
+  }
+
+  /**
+   * POST /videos with empty participants array should return 400. The Size(min=1) constraint on the
+   * participants field triggers MethodArgumentNotValidException.
+   */
+  @Test
+  void postVideos_emptyParticipants_returns400() throws Exception {
+    // Arrange
+    String body =
+        """
+        {
+          "youtubeUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+          "amendments": ["FIRST"],
+          "participants": []
+        }
+        """;
+
+    // Act & Assert
+    mockMvc
+        .perform(
+            post("/videos")
+                .header("Authorization", "Bearer valid-token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.details").isArray());
+  }
+
+  /**
+   * POST /videos with a completely missing request body should return 400. The
+   * HttpMessageNotReadableException is caught by GlobalExceptionHandler.
+   */
+  @Test
+  void postVideos_missingBody_returns400() throws Exception {
+    mockMvc
+        .perform(
+            post("/videos")
+                .header("Authorization", "Bearer valid-token")
+                .contentType(MediaType.APPLICATION_JSON))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+  }
+
   /** GET /actuator/health should return 200 without any auth. */
   @Test
   void actuatorHealth_isPublic() throws Exception {
