@@ -5,6 +5,7 @@ import com.accountabilityatlas.videoservice.domain.Participant;
 import com.accountabilityatlas.videoservice.domain.Video;
 import com.accountabilityatlas.videoservice.domain.VideoLocation;
 import com.accountabilityatlas.videoservice.domain.VideoStatus;
+import com.accountabilityatlas.videoservice.exception.LocationRequiredException;
 import com.accountabilityatlas.videoservice.exception.UnauthorizedException;
 import com.accountabilityatlas.videoservice.service.VideoLocationService;
 import com.accountabilityatlas.videoservice.service.VideoService;
@@ -126,13 +127,12 @@ public class VideoController implements VideosApi, VideoLocationsApi {
     }
   }
 
-  /** Create a new video submission for the authenticated user and optionally attach a location. */
+  /** Create a new video submission for the authenticated user with a required location. */
   @Override
   public ResponseEntity<VideoDetail> createVideo(CreateVideoRequest request) {
     UUID userId = requireCurrentUserId();
+    UUID locationId = requireLocationId(request);
     String trustTier = getCurrentTrustTierOrNull();
-    List<UUID> locationIds =
-        request.getLocationId() != null ? List.of(request.getLocationId()) : List.of();
 
     Video video =
         videoService.createVideo(
@@ -146,13 +146,20 @@ public class VideoController implements VideosApi, VideoLocationsApi {
             request.getVideoDate(),
             userId,
             trustTier != null ? trustTier : "NEW",
-            locationIds);
+            List.of(locationId));
 
-    if (request.getLocationId() != null) {
-      videoLocationService.addLocationInternal(video.getId(), request.getLocationId(), true);
-    }
+    videoLocationService.addLocationInternal(video.getId(), locationId, true);
 
     return ResponseEntity.status(HttpStatus.CREATED).body(toVideoDetail(video));
+  }
+
+  /** Require a non-null location ID from the request, throwing if absent. */
+  private UUID requireLocationId(CreateVideoRequest request) {
+    @Nullable UUID locationId = request.getLocationId();
+    if (locationId == null) {
+      throw new LocationRequiredException();
+    }
+    return locationId;
   }
 
   /** Update an existing video owned by the authenticated user. */

@@ -67,6 +67,18 @@ public class GlobalExceptionHandler {
                 "LOCATION_ALREADY_LINKED", ex.getMessage(), null, UUID.randomUUID().toString()));
   }
 
+  @ExceptionHandler(LocationRequiredException.class)
+  public ResponseEntity<ErrorResponse> handleLocationRequired(LocationRequiredException ex) {
+    List<FieldError> details = List.of(new FieldError("locationId", "must not be null"));
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(
+            new ErrorResponse(
+                "VALIDATION_ERROR",
+                "Request validation failed",
+                details,
+                UUID.randomUUID().toString()));
+  }
+
   @ExceptionHandler(UnauthorizedException.class)
   public ResponseEntity<ErrorResponse> handleUnauthorized(UnauthorizedException ex) {
     return ResponseEntity.status(HttpStatus.FORBIDDEN)
