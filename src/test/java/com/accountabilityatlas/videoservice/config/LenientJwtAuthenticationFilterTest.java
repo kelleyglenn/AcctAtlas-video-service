@@ -47,7 +47,7 @@ class LenientJwtAuthenticationFilterTest {
 
     AtomicReference<Authentication> captured = new AtomicReference<>();
     doAnswer(
-            invocation -> {
+            ignored -> {
               captured.set(SecurityContextHolder.getContext().getAuthentication());
               return null;
             })
@@ -136,7 +136,7 @@ class LenientJwtAuthenticationFilterTest {
 
     AtomicReference<Authentication> captured = new AtomicReference<>();
     doAnswer(
-            invocation -> {
+            ignored -> {
               captured.set(SecurityContextHolder.getContext().getAuthentication());
               return null;
             })
