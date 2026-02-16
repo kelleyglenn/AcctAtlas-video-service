@@ -2,7 +2,6 @@ package com.accountabilityatlas.videoservice.web;
 
 import com.accountabilityatlas.videoservice.domain.Amendment;
 import com.accountabilityatlas.videoservice.domain.Participant;
-import com.accountabilityatlas.videoservice.domain.Video;
 import com.accountabilityatlas.videoservice.domain.VideoLocation;
 import com.accountabilityatlas.videoservice.domain.VideoStatus;
 import com.accountabilityatlas.videoservice.service.VideoLocationService;
@@ -38,7 +37,7 @@ public class InternalVideoController {
   public record AddLocationRequest(UUID locationId, boolean isPrimary) {}
 
   @PutMapping("/{id}")
-  public ResponseEntity<Video> updateVideo(
+  public ResponseEntity<Void> updateVideo(
       @PathVariable UUID id, @RequestBody UpdateVideoRequest request) {
     Set<Amendment> amendments =
         request.amendments() != null
@@ -49,17 +48,16 @@ public class InternalVideoController {
             ? request.participants().stream().map(Participant::valueOf).collect(Collectors.toSet())
             : null;
 
-    Video video =
-        videoService.updateVideoInternal(id, amendments, participants, request.videoDate());
-    return ResponseEntity.ok(video);
+    videoService.updateVideoInternal(id, amendments, participants, request.videoDate());
+    return ResponseEntity.noContent().build();
   }
 
   @PutMapping("/{id}/status")
-  public ResponseEntity<Video> updateStatus(
+  public ResponseEntity<Void> updateStatus(
       @PathVariable UUID id, @RequestBody UpdateStatusRequest request) {
     VideoStatus status = VideoStatus.valueOf(request.status());
-    Video video = videoService.updateVideoStatus(id, status);
-    return ResponseEntity.ok(video);
+    videoService.updateVideoStatus(id, status);
+    return ResponseEntity.noContent().build();
   }
 
   @PostMapping("/{id}/locations")

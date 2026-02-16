@@ -41,10 +41,10 @@ class InternalVideoControllerTest {
             Set.of("FIRST"), Set.of("POLICE"), LocalDate.of(2024, 1, 1));
 
     // Act
-    Video response = controller.updateVideo(id, request).getBody();
+    var response = controller.updateVideo(id, request);
 
     // Assert
-    assertThat(response).isSameAs(video);
+    assertThat(response.getStatusCode().value()).isEqualTo(204);
     verify(videoService).updateVideoInternal(eq(id), anySet(), anySet(), any());
   }
 
@@ -58,10 +58,10 @@ class InternalVideoControllerTest {
     var request = new InternalVideoController.UpdateStatusRequest("APPROVED");
 
     // Act
-    Video response = controller.updateStatus(id, request).getBody();
+    var response = controller.updateStatus(id, request);
 
     // Assert
-    assertThat(response).isSameAs(video);
+    assertThat(response.getStatusCode().value()).isEqualTo(204);
   }
 
   @Test
