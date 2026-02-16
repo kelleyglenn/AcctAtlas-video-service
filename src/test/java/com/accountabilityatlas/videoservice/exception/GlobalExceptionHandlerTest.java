@@ -1,6 +1,9 @@
 package com.accountabilityatlas.videoservice.exception;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -8,6 +11,7 @@ import jakarta.validation.Path;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -30,6 +34,7 @@ class GlobalExceptionHandlerTest {
 
     // Assert
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertNotNull(response.getBody());
     assertThat(response.getBody().code()).isEqualTo("NOT_FOUND");
   }
 
@@ -44,6 +49,7 @@ class GlobalExceptionHandlerTest {
 
     // Assert
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertNotNull(response.getBody());
     assertThat(response.getBody().code()).isEqualTo("VIDEO_EXISTS");
   }
 
@@ -58,6 +64,7 @@ class GlobalExceptionHandlerTest {
 
     // Assert
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertNotNull(response.getBody());
     assertThat(response.getBody().code()).isEqualTo("INVALID_YOUTUBE_URL");
   }
 
@@ -72,6 +79,7 @@ class GlobalExceptionHandlerTest {
 
     // Assert
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+    assertNotNull(response.getBody());
     assertThat(response.getBody().code()).isEqualTo("YOUTUBE_VIDEO_UNAVAILABLE");
   }
 
@@ -86,6 +94,7 @@ class GlobalExceptionHandlerTest {
 
     // Assert
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertNotNull(response.getBody());
     assertThat(response.getBody().code()).isEqualTo("LOCATION_NOT_FOUND");
   }
 
@@ -101,6 +110,7 @@ class GlobalExceptionHandlerTest {
 
     // Assert
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertNotNull(response.getBody());
     assertThat(response.getBody().code()).isEqualTo("LOCATION_ALREADY_LINKED");
   }
 
@@ -115,6 +125,7 @@ class GlobalExceptionHandlerTest {
 
     // Assert
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    assertNotNull(response.getBody());
     assertThat(response.getBody().code()).isEqualTo("FORBIDDEN");
   }
 
@@ -130,6 +141,7 @@ class GlobalExceptionHandlerTest {
 
     // Assert
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertNotNull(response.getBody());
     assertThat(response.getBody().code()).isEqualTo("VALIDATION_ERROR");
     assertThat(response.getBody().details()).hasSize(1);
   }
@@ -138,11 +150,11 @@ class GlobalExceptionHandlerTest {
   void handleConstraintViolation_violations_returnsBadRequestWithDetails() {
     // Arrange
     @SuppressWarnings("unchecked")
-    ConstraintViolation<Object> violation = org.mockito.Mockito.mock(ConstraintViolation.class);
-    Path path = org.mockito.Mockito.mock(Path.class);
-    org.mockito.Mockito.when(path.toString()).thenReturn("amendments");
-    org.mockito.Mockito.when(violation.getPropertyPath()).thenReturn(path);
-    org.mockito.Mockito.when(violation.getMessage()).thenReturn("must not be empty");
+    ConstraintViolation<Object> violation = mock(ConstraintViolation.class);
+    Path path = mock(Path.class);
+    when(path.toString()).thenReturn("amendments");
+    when(violation.getPropertyPath()).thenReturn(path);
+    when(violation.getMessage()).thenReturn("must not be empty");
     ConstraintViolationException ex = new ConstraintViolationException(Set.of(violation));
 
     // Act
@@ -151,6 +163,7 @@ class GlobalExceptionHandlerTest {
 
     // Assert
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertNotNull(response.getBody());
     assertThat(response.getBody().code()).isEqualTo("VALIDATION_ERROR");
     assertThat(response.getBody().details()).hasSize(1);
     assertThat(response.getBody().details().getFirst().field()).isEqualTo("amendments");
@@ -160,8 +173,7 @@ class GlobalExceptionHandlerTest {
   void handleMessageNotReadable_malformedBody_returnsBadRequest() {
     // Arrange
     HttpMessageNotReadableException ex =
-        new HttpMessageNotReadableException(
-            "Could not read JSON", (org.springframework.http.HttpInputMessage) null);
+        new HttpMessageNotReadableException("Could not read JSON", (HttpInputMessage) null);
 
     // Act
     ResponseEntity<GlobalExceptionHandler.ErrorResponse> response =
@@ -169,6 +181,7 @@ class GlobalExceptionHandlerTest {
 
     // Assert
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertNotNull(response.getBody());
     assertThat(response.getBody().code()).isEqualTo("VALIDATION_ERROR");
     assertThat(response.getBody().message()).isEqualTo("Malformed or missing request body");
     assertThat(response.getBody().details()).isNull();

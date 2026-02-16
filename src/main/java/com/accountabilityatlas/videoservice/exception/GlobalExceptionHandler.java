@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+  public static final String VALIDATION_ERROR = "VALIDATION_ERROR";
+
   public record ErrorResponse(
       String code, String message, List<FieldError> details, String traceId) {}
 
@@ -80,7 +82,7 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
         .body(
             new ErrorResponse(
-                "VALIDATION_ERROR",
+                VALIDATION_ERROR,
                 "Request validation failed",
                 details,
                 UUID.randomUUID().toString()));
@@ -95,7 +97,7 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
         .body(
             new ErrorResponse(
-                "VALIDATION_ERROR",
+                VALIDATION_ERROR,
                 "Request validation failed",
                 details,
                 UUID.randomUUID().toString()));
@@ -103,11 +105,11 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(HttpMessageNotReadableException.class)
   public ResponseEntity<ErrorResponse> handleMessageNotReadable(
-      HttpMessageNotReadableException ex) {
+      HttpMessageNotReadableException ignored) {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
         .body(
             new ErrorResponse(
-                "VALIDATION_ERROR",
+                VALIDATION_ERROR,
                 "Malformed or missing request body",
                 null,
                 UUID.randomUUID().toString()));
