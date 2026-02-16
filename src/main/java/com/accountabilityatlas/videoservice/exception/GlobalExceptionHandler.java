@@ -1,15 +1,19 @@
 package com.accountabilityatlas.videoservice.exception;
 
+import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+  public static final String VALIDATION_ERROR = "VALIDATION_ERROR";
 
   public record ErrorResponse(
       String code, String message, List<FieldError> details, String traceId) {}
@@ -78,9 +82,36 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
         .body(
             new ErrorResponse(
-                "VALIDATION_ERROR",
+                VALIDATION_ERROR,
                 "Request validation failed",
                 details,
+                UUID.randomUUID().toString()));
+  }
+
+  @ExceptionHandler(ConstraintViolationException.class)
+  public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex) {
+    List<FieldError> details =
+        ex.getConstraintViolations().stream()
+            .map(v -> new FieldError(v.getPropertyPath().toString(), v.getMessage()))
+            .toList();
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(
+            new ErrorResponse(
+                VALIDATION_ERROR,
+                "Request validation failed",
+                details,
+                UUID.randomUUID().toString()));
+  }
+
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ResponseEntity<ErrorResponse> handleMessageNotReadable(
+      HttpMessageNotReadableException ignored) {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(
+            new ErrorResponse(
+                VALIDATION_ERROR,
+                "Malformed or missing request body",
+                null,
                 UUID.randomUUID().toString()));
   }
 }
