@@ -13,7 +13,6 @@ import com.accountabilityatlas.videoservice.domain.Video;
 import com.accountabilityatlas.videoservice.domain.VideoLocation;
 import com.accountabilityatlas.videoservice.domain.VideoStatus;
 import com.accountabilityatlas.videoservice.exception.InvalidYouTubeUrlException;
-import com.accountabilityatlas.videoservice.exception.LocationRequiredException;
 import com.accountabilityatlas.videoservice.exception.UnauthorizedException;
 import com.accountabilityatlas.videoservice.service.VideoLocationService;
 import com.accountabilityatlas.videoservice.service.VideoService;
@@ -250,24 +249,6 @@ class VideoControllerTest {
 
     // Assert
     assertThat(thrown).isInstanceOf(UnauthorizedException.class);
-  }
-
-  @Test
-  void createVideo_missingLocationId_throwsLocationRequired() {
-    // Arrange
-    setAuth();
-    CreateVideoRequest request = new CreateVideoRequest();
-    request.setYoutubeUrl(URI.create("https://youtu.be/dQw4w9WgXcQ"));
-    request.setAmendments(List.of(com.accountabilityatlas.videoservice.web.model.Amendment.FIRST));
-    request.setParticipants(
-        List.of(com.accountabilityatlas.videoservice.web.model.Participant.POLICE));
-    // locationId intentionally not set
-
-    // Act
-    Throwable thrown = catchThrowable(() -> videoController.createVideo(request));
-
-    // Assert
-    assertThat(thrown).isInstanceOf(LocationRequiredException.class);
   }
 
   @Test

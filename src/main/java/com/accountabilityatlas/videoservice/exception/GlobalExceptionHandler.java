@@ -68,7 +68,7 @@ public class GlobalExceptionHandler {
   }
 
   @ExceptionHandler(LocationRequiredException.class)
-  public ResponseEntity<ErrorResponse> handleLocationRequired(LocationRequiredException ex) {
+  public ResponseEntity<ErrorResponse> handleLocationRequired(LocationRequiredException ignore) {
     List<FieldError> details = List.of(new FieldError("locationId", "must not be null"));
     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
         .body(

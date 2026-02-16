@@ -5,7 +5,6 @@ import com.accountabilityatlas.videoservice.domain.Participant;
 import com.accountabilityatlas.videoservice.domain.Video;
 import com.accountabilityatlas.videoservice.domain.VideoLocation;
 import com.accountabilityatlas.videoservice.domain.VideoStatus;
-import com.accountabilityatlas.videoservice.exception.LocationRequiredException;
 import com.accountabilityatlas.videoservice.exception.UnauthorizedException;
 import com.accountabilityatlas.videoservice.service.VideoLocationService;
 import com.accountabilityatlas.videoservice.service.VideoService;
@@ -131,7 +130,7 @@ public class VideoController implements VideosApi, VideoLocationsApi {
   @Override
   public ResponseEntity<VideoDetail> createVideo(CreateVideoRequest request) {
     UUID userId = requireCurrentUserId();
-    UUID locationId = requireLocationId(request);
+    UUID locationId = request.getLocationId();
     String trustTier = getCurrentTrustTierOrNull();
 
     Video video =
@@ -151,15 +150,6 @@ public class VideoController implements VideosApi, VideoLocationsApi {
     videoLocationService.addLocationInternal(video.getId(), locationId, true);
 
     return ResponseEntity.status(HttpStatus.CREATED).body(toVideoDetail(video));
-  }
-
-  /** Require a non-null location ID from the request, throwing if absent. */
-  private UUID requireLocationId(CreateVideoRequest request) {
-    @Nullable UUID locationId = request.getLocationId();
-    if (locationId == null) {
-      throw new LocationRequiredException();
-    }
-    return locationId;
   }
 
   /** Update an existing video owned by the authenticated user. */
