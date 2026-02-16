@@ -23,6 +23,9 @@ public class VideoEventPublisher {
   @Value("${app.sqs.video-events-queue:video-events}")
   private String videoEventsQueue;
 
+  @Value("${app.sqs.video-status-events-queue:video-status-events}")
+  private String videoStatusEventsQueue;
+
   /**
    * Publishes a VideoSubmitted event to the video-events queue.
    *
@@ -53,6 +56,38 @@ public class VideoEventPublisher {
       log.error(
           "Failed to publish VideoSubmitted event for video {}: {}",
           video.getId(),
+          e.getMessage(),
+          e);
+      throw e;
+    }
+  }
+
+  /**
+   * Publishes a VideoStatusChanged event to the video-status-events queue.
+   *
+   * @param videoId the video ID
+   * @param locationIds list of location IDs associated with the video
+   * @param previousStatus the previous status (as String to avoid cross-service coupling)
+   * @param newStatus the new status
+   */
+  public void publishVideoStatusChanged(
+      UUID videoId, List<UUID> locationIds, String previousStatus, String newStatus) {
+    VideoStatusChangedEvent event =
+        new VideoStatusChangedEvent(videoId, locationIds, previousStatus, newStatus, Instant.now());
+
+    log.info(
+        "Publishing VideoStatusChanged event for video {} ({} -> {}) to SQS queue {}",
+        videoId,
+        previousStatus,
+        newStatus,
+        videoStatusEventsQueue);
+    try {
+      sqsTemplate.send(videoStatusEventsQueue, event);
+      log.debug("Published VideoStatusChanged event: {}", event);
+    } catch (Exception e) {
+      log.error(
+          "Failed to publish VideoStatusChanged event for video {}: {}",
+          videoId,
           e.getMessage(),
           e);
       throw e;

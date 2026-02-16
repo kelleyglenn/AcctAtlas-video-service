@@ -40,11 +40,7 @@ class VideoServiceTest {
   @Mock private VideoRepository videoRepository;
   @Mock private YouTubeService youTubeService;
 
-  @SuppressWarnings("unused")
-  @Mock
-  private VideoEventPublisher videoEventPublisher;
-
-  @Mock private LocationClient locationClient;
+  @Mock private VideoEventPublisher videoEventPublisher;
 
   @InjectMocks private VideoService videoService;
 
@@ -362,7 +358,7 @@ class VideoServiceTest {
   }
 
   @Test
-  void updateVideoStatus_toApproved_notifiesLocationService() {
+  void updateVideoStatus_toApproved_publishesStatusChangedEvent() {
     // Arrange
     UUID locationId = UUID.randomUUID();
     VideoLocation videoLocation = new VideoLocation();
@@ -380,11 +376,12 @@ class VideoServiceTest {
     videoService.updateVideoStatus(videoId, VideoStatus.APPROVED);
 
     // Assert
-    verify(locationClient).notifyVideoApproved(List.of(locationId));
+    verify(videoEventPublisher)
+        .publishVideoStatusChanged(videoId, List.of(locationId), "PENDING", "APPROVED");
   }
 
   @Test
-  void updateVideoStatus_fromApprovedToRejected_notifiesLocationService() {
+  void updateVideoStatus_fromApprovedToRejected_publishesStatusChangedEvent() {
     // Arrange
     UUID locationId = UUID.randomUUID();
     VideoLocation videoLocation = new VideoLocation();
@@ -402,7 +399,8 @@ class VideoServiceTest {
     videoService.updateVideoStatus(videoId, VideoStatus.REJECTED);
 
     // Assert
-    verify(locationClient).notifyVideoRemoved(List.of(locationId));
+    verify(videoEventPublisher)
+        .publishVideoStatusChanged(videoId, List.of(locationId), "APPROVED", "REJECTED");
   }
 
   @Test

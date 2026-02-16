@@ -1,10 +1,8 @@
 package com.accountabilityatlas.videoservice.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import okhttp3.mockwebserver.MockResponse;
@@ -68,35 +66,5 @@ class LocationClientTest {
 
     // Assert
     assertThat(result).isEmpty();
-  }
-
-  @Test
-  void notifyVideoApproved_sendsPostRequest() {
-    mockWebServer.enqueue(new MockResponse().setResponseCode(204));
-
-    assertThatCode(() -> locationClient.notifyVideoApproved(List.of(UUID.randomUUID())))
-        .doesNotThrowAnyException();
-  }
-
-  @Test
-  void notifyVideoRemoved_sendsPostRequest() {
-    mockWebServer.enqueue(new MockResponse().setResponseCode(204));
-
-    assertThatCode(() -> locationClient.notifyVideoRemoved(List.of(UUID.randomUUID())))
-        .doesNotThrowAnyException();
-  }
-
-  @Test
-  void notifyVideoApproved_emptyList_doesNothing() {
-    // No server response needed since no request should be made
-    assertThatCode(() -> locationClient.notifyVideoApproved(List.of())).doesNotThrowAnyException();
-  }
-
-  @Test
-  void notifyVideoApproved_serverError_doesNotThrow() {
-    mockWebServer.enqueue(new MockResponse().setResponseCode(500));
-
-    assertThatCode(() -> locationClient.notifyVideoApproved(List.of(UUID.randomUUID())))
-        .doesNotThrowAnyException();
   }
 }

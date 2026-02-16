@@ -28,7 +28,6 @@ public class VideoService {
   private final VideoRepository videoRepository;
   private final YouTubeService youTubeService;
   private final VideoEventPublisher videoEventPublisher;
-  private final LocationClient locationClient;
 
   @Transactional(readOnly = true)
   public Video getVideo(UUID id) {
@@ -177,13 +176,15 @@ public class VideoService {
     video.setStatus(status);
     Video saved = videoRepository.save(video);
 
-    // Notify location-service about video count changes
+    // Publish status change event for location-service to update video counts
     List<UUID> locationIds = saved.getLocations().stream().map(loc -> loc.getLocationId()).toList();
     if (!locationIds.isEmpty()) {
       if (status == VideoStatus.APPROVED && previousStatus != VideoStatus.APPROVED) {
-        locationClient.notifyVideoApproved(locationIds);
+        videoEventPublisher.publishVideoStatusChanged(
+            saved.getId(), locationIds, previousStatus.name(), status.name());
       } else if (previousStatus == VideoStatus.APPROVED && status != VideoStatus.APPROVED) {
-        locationClient.notifyVideoRemoved(locationIds);
+        videoEventPublisher.publishVideoStatusChanged(
+            saved.getId(), locationIds, previousStatus.name(), status.name());
       }
     }
 
