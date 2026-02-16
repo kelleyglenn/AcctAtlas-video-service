@@ -91,7 +91,9 @@ class SecurityIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
 
-  @MockitoBean private SqsTemplate sqsTemplate;
+  @SuppressWarnings("UnusedVariable")
+  @MockitoBean
+  private SqsTemplate sqsTemplate;
 
   @MockitoBean private YouTubeService youTubeService;
 
@@ -245,9 +247,11 @@ class SecurityIntegrationTest {
         {
           "youtubeUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
           "amendments": [],
-          "participants": ["POLICE"]
+          "participants": ["POLICE"],
+          "locationId": "%s"
         }
-        """;
+        """
+            .formatted(TEST_LOCATION_ID);
 
     // Act & Assert
     mockMvc
@@ -274,9 +278,11 @@ class SecurityIntegrationTest {
         {
           "youtubeUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
           "amendments": ["FIRST"],
-          "participants": []
+          "participants": [],
+          "locationId": "%s"
         }
-        """;
+        """
+            .formatted(TEST_LOCATION_ID);
 
     // Act & Assert
     mockMvc
