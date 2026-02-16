@@ -186,4 +186,24 @@ class GlobalExceptionHandlerTest {
     assertThat(response.getBody().message()).isEqualTo("Malformed or missing request body");
     assertThat(response.getBody().details()).isNull();
   }
+
+  @Test
+  void handleLocationRequired_returnsBadRequestWithFieldDetail() {
+    // Arrange
+    LocationRequiredException exception = new LocationRequiredException();
+
+    // Act
+    ResponseEntity<GlobalExceptionHandler.ErrorResponse> response =
+        handler.handleLocationRequired(exception);
+
+    // Assert
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody()).isNotNull();
+    assertThat(response.getBody().code()).isEqualTo("VALIDATION_ERROR");
+    assertThat(response.getBody().message()).isEqualTo("Request validation failed");
+    assertThat(response.getBody().details()).hasSize(1);
+    assertThat(response.getBody().details().getFirst().field()).isEqualTo("locationId");
+    assertThat(response.getBody().details().getFirst().message()).isEqualTo("must not be null");
+    assertThat(response.getBody().traceId()).isNotBlank();
+  }
 }
