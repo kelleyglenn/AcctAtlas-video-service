@@ -126,13 +126,12 @@ public class VideoController implements VideosApi, VideoLocationsApi {
     }
   }
 
-  /** Create a new video submission for the authenticated user and optionally attach a location. */
+  /** Create a new video submission for the authenticated user with a required location. */
   @Override
   public ResponseEntity<VideoDetail> createVideo(CreateVideoRequest request) {
     UUID userId = requireCurrentUserId();
+    UUID locationId = request.getLocationId();
     String trustTier = getCurrentTrustTierOrNull();
-    List<UUID> locationIds =
-        request.getLocationId() != null ? List.of(request.getLocationId()) : List.of();
 
     Video video =
         videoService.createVideo(
@@ -146,11 +145,9 @@ public class VideoController implements VideosApi, VideoLocationsApi {
             request.getVideoDate(),
             userId,
             trustTier != null ? trustTier : "NEW",
-            locationIds);
+            List.of(locationId));
 
-    if (request.getLocationId() != null) {
-      videoLocationService.addLocationInternal(video.getId(), request.getLocationId(), true);
-    }
+    videoLocationService.addLocationInternal(video.getId(), locationId, true);
 
     return ResponseEntity.status(HttpStatus.CREATED).body(toVideoDetail(video));
   }

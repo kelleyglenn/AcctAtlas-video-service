@@ -1,5 +1,6 @@
 package com.accountabilityatlas.videoservice.integration;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -7,10 +8,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.accountabilityatlas.videoservice.service.LocationClient;
 import com.accountabilityatlas.videoservice.service.YouTubeService;
 import com.accountabilityatlas.videoservice.service.YouTubeService.YouTubeMetadata;
 import io.awspring.cloud.sqs.operations.SqsTemplate;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -64,6 +67,7 @@ class SecurityIntegrationTest {
   }
 
   static final String TEST_USER_ID = UUID.randomUUID().toString();
+  static final String TEST_LOCATION_ID = "660e8400-e29b-41d4-a716-446655440001";
 
   @TestConfiguration
   static class TestSecurityConfig {
@@ -91,6 +95,8 @@ class SecurityIntegrationTest {
 
   @MockitoBean private YouTubeService youTubeService;
 
+  @MockitoBean private LocationClient locationClient;
+
   @BeforeEach
   void setUpMocks() {
     when(youTubeService.extractVideoId(anyString())).thenReturn("dQw4w9WgXcQ");
@@ -105,6 +111,15 @@ class SecurityIntegrationTest {
                 "channel-123",
                 "Test Channel",
                 Instant.parse("2024-01-01T00:00:00Z")));
+    when(locationClient.getLocation(any()))
+        .thenReturn(
+            Optional.of(
+                new LocationClient.LocationSummary(
+                    UUID.fromString(TEST_LOCATION_ID),
+                    "Test Location",
+                    "Test City",
+                    "TS",
+                    new LocationClient.Coordinates(40.0, -74.0))));
   }
 
   /** GET /videos without any auth header should return 200 (public endpoint). */
@@ -133,6 +148,17 @@ class SecurityIntegrationTest {
   }
 
   private static final String VALID_CREATE_VIDEO_BODY =
+      """
+      {
+        "youtubeUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "amendments": ["FIRST"],
+        "participants": ["POLICE"],
+        "locationId": "%s"
+      }
+      """
+          .formatted(TEST_LOCATION_ID);
+
+  private static final String CREATE_VIDEO_BODY_WITHOUT_LOCATION =
       """
       {
         "youtubeUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
@@ -277,6 +303,23 @@ class SecurityIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+  }
+
+  /**
+   * POST /videos with a valid token but missing locationId should return 400 with a
+   * VALIDATION_ERROR indicating locationId is required.
+   */
+  @Test
+  void postVideos_missingLocationId_returns400() throws Exception {
+    mockMvc
+        .perform(
+            post("/videos")
+                .header("Authorization", "Bearer valid-token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(CREATE_VIDEO_BODY_WITHOUT_LOCATION))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.details[0].field").value("locationId"));
   }
 
   /** GET /actuator/health should return 200 without any auth. */

@@ -741,7 +741,7 @@ components:
     # Request schemas
     CreateVideoRequest:
       type: object
-      required: [youtubeUrl, amendments, participants]
+      required: [youtubeUrl, amendments, participants, locationId]
       properties:
         youtubeUrl:
           type: string
@@ -771,7 +771,7 @@ components:
         locationId:
           type: string
           format: uuid
-          description: Primary location ID (optional, can add later)
+          description: Primary location ID for the video
       examples:
         - youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
           amendments: ["FIRST", "FOURTH"]

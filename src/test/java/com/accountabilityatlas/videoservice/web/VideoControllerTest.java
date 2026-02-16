@@ -242,6 +242,7 @@ class VideoControllerTest {
     request.setAmendments(List.of(com.accountabilityatlas.videoservice.web.model.Amendment.FIRST));
     request.setParticipants(
         List.of(com.accountabilityatlas.videoservice.web.model.Participant.POLICE));
+    request.setLocationId(UUID.randomUUID());
 
     // Act
     Throwable thrown = catchThrowable(() -> videoController.createVideo(request));
@@ -254,12 +255,14 @@ class VideoControllerTest {
   void createVideo_authenticated_mapsDetail() {
     // Arrange
     setAuth();
+    UUID locationId = UUID.randomUUID();
     CreateVideoRequest request = new CreateVideoRequest();
     request.setYoutubeUrl(URI.create("https://youtu.be/dQw4w9WgXcQ"));
     request.setAmendments(List.of(com.accountabilityatlas.videoservice.web.model.Amendment.FIRST));
     request.setParticipants(
         List.of(com.accountabilityatlas.videoservice.web.model.Participant.POLICE));
     request.setVideoDate(LocalDate.of(2024, 1, 2));
+    request.setLocationId(locationId);
 
     Video video = sampleVideo();
     when(videoService.createVideo(any(), anySet(), anySet(), any(), any(), any(), anyList()))
@@ -280,6 +283,7 @@ class VideoControllerTest {
             eq(userId),
             any(),
             anyList());
+    verify(videoLocationService).addLocationInternal(video.getId(), locationId, true);
   }
 
   @Test
