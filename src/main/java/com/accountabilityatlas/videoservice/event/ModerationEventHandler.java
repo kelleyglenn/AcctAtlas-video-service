@@ -47,7 +47,7 @@ public class ModerationEventHandler {
         event.videoId(),
         event.reviewerId(),
         event.reason());
-    videoService.updateVideoStatus(event.videoId(), VideoStatus.REJECTED);
+    videoService.updateVideoStatus(event.videoId(), VideoStatus.REJECTED, event.reason());
     log.info("Updated video {} status to REJECTED (reason: {})", event.videoId(), event.reason());
   }
 }

@@ -167,10 +167,18 @@ public class VideoService {
 
   @Transactional
   public Video updateVideoStatus(UUID id, VideoStatus newStatus) {
+    return updateVideoStatus(id, newStatus, null);
+  }
+
+  @Transactional
+  public Video updateVideoStatus(UUID id, VideoStatus newStatus, String rejectionReason) {
     Video video =
         videoRepository.findByIdWithLocations(id).orElseThrow(() -> new VideoNotFoundException(id));
     VideoStatus previousStatus = video.getStatus();
     video.setStatus(newStatus);
+    if (rejectionReason != null) {
+      video.setRejectionReason(rejectionReason);
+    }
     Video saved = videoRepository.save(video);
 
     // Publish status change event for location-service to update video counts

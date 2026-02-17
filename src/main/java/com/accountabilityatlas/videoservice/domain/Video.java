@@ -74,6 +74,9 @@ public class Video {
   @Column(name = "submitted_by", nullable = false)
   private UUID submittedBy;
 
+  @Column(name = "rejection_reason", length = 500)
+  private String rejectionReason;
+
   @OneToMany(mappedBy = "video", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<VideoLocation> locations = new ArrayList<>();
 

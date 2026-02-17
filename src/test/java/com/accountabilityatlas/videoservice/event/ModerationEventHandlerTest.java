@@ -56,12 +56,33 @@ class ModerationEventHandlerTest {
     Video video = new Video();
     video.setId(videoId);
     video.setStatus(VideoStatus.REJECTED);
-    when(videoService.updateVideoStatus(videoId, VideoStatus.REJECTED)).thenReturn(video);
+    when(videoService.updateVideoStatus(videoId, VideoStatus.REJECTED, "OFF_TOPIC"))
+        .thenReturn(video);
 
     // Act
     handler.handleModerationEvent(event);
 
     // Assert
-    verify(videoService).updateVideoStatus(videoId, VideoStatus.REJECTED);
+    verify(videoService).updateVideoStatus(videoId, VideoStatus.REJECTED, "OFF_TOPIC");
+  }
+
+  @Test
+  void handleModerationEvent_videoRejected_storesRejectionReason() {
+    // Arrange
+    UUID videoId = UUID.randomUUID();
+    String reason = "Duplicate submission";
+    var event = new VideoRejectedEvent(videoId, UUID.randomUUID(), reason, Instant.now());
+
+    var video = new Video();
+    video.setId(videoId);
+    video.setStatus(VideoStatus.REJECTED);
+    video.setRejectionReason(reason);
+    when(videoService.updateVideoStatus(videoId, VideoStatus.REJECTED, reason)).thenReturn(video);
+
+    // Act
+    handler.handleModerationEvent(event);
+
+    // Assert
+    verify(videoService).updateVideoStatus(videoId, VideoStatus.REJECTED, reason);
   }
 }
