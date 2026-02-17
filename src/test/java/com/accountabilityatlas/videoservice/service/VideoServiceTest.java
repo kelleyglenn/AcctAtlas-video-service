@@ -8,6 +8,7 @@ import static org.mockito.Mockito.*;
 import com.accountabilityatlas.videoservice.domain.Amendment;
 import com.accountabilityatlas.videoservice.domain.Participant;
 import com.accountabilityatlas.videoservice.domain.Video;
+import com.accountabilityatlas.videoservice.domain.VideoLocation;
 import com.accountabilityatlas.videoservice.domain.VideoStatus;
 import com.accountabilityatlas.videoservice.event.VideoEventPublisher;
 import com.accountabilityatlas.videoservice.exception.UnauthorizedException;
@@ -18,6 +19,7 @@ import com.accountabilityatlas.videoservice.service.YouTubeService.YouTubeMetada
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -38,9 +40,7 @@ class VideoServiceTest {
   @Mock private VideoRepository videoRepository;
   @Mock private YouTubeService youTubeService;
 
-  @SuppressWarnings("unused")
-  @Mock
-  private VideoEventPublisher videoEventPublisher;
+  @Mock private VideoEventPublisher videoEventPublisher;
 
   @InjectMocks private VideoService videoService;
 
@@ -344,7 +344,9 @@ class VideoServiceTest {
     // Arrange
     Video video = new Video();
     video.setId(videoId);
-    when(videoRepository.findById(videoId)).thenReturn(Optional.of(video));
+    video.setStatus(VideoStatus.PENDING);
+    video.setLocations(Collections.emptyList());
+    when(videoRepository.findByIdWithLocations(videoId)).thenReturn(Optional.of(video));
     when(videoRepository.save(any(Video.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -353,6 +355,75 @@ class VideoServiceTest {
 
     // Assert
     assertThat(updated.getStatus()).isEqualTo(VideoStatus.APPROVED);
+    verify(videoEventPublisher, never()).publishVideoStatusChanged(any(), any(), any(), any());
+  }
+
+  @Test
+  void updateVideoStatus_nonApprovedTransition_doesNotPublishEvent() {
+    // Arrange
+    UUID locationId = UUID.randomUUID();
+    VideoLocation videoLocation = new VideoLocation();
+    videoLocation.setLocationId(locationId);
+
+    Video video = new Video();
+    video.setId(videoId);
+    video.setStatus(VideoStatus.PENDING);
+    video.setLocations(List.of(videoLocation));
+    when(videoRepository.findByIdWithLocations(videoId)).thenReturn(Optional.of(video));
+    when(videoRepository.save(any(Video.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    // Act
+    videoService.updateVideoStatus(videoId, VideoStatus.REJECTED);
+
+    // Assert
+    verify(videoEventPublisher, never()).publishVideoStatusChanged(any(), any(), any(), any());
+  }
+
+  @Test
+  void updateVideoStatus_toApproved_publishesStatusChangedEvent() {
+    // Arrange
+    UUID locationId = UUID.randomUUID();
+    VideoLocation videoLocation = new VideoLocation();
+    videoLocation.setLocationId(locationId);
+
+    Video video = new Video();
+    video.setId(videoId);
+    video.setStatus(VideoStatus.PENDING);
+    video.setLocations(List.of(videoLocation));
+    when(videoRepository.findByIdWithLocations(videoId)).thenReturn(Optional.of(video));
+    when(videoRepository.save(any(Video.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    // Act
+    videoService.updateVideoStatus(videoId, VideoStatus.APPROVED);
+
+    // Assert
+    verify(videoEventPublisher)
+        .publishVideoStatusChanged(videoId, List.of(locationId), "PENDING", "APPROVED");
+  }
+
+  @Test
+  void updateVideoStatus_fromApprovedToRejected_publishesStatusChangedEvent() {
+    // Arrange
+    UUID locationId = UUID.randomUUID();
+    VideoLocation videoLocation = new VideoLocation();
+    videoLocation.setLocationId(locationId);
+
+    Video video = new Video();
+    video.setId(videoId);
+    video.setStatus(VideoStatus.APPROVED);
+    video.setLocations(List.of(videoLocation));
+    when(videoRepository.findByIdWithLocations(videoId)).thenReturn(Optional.of(video));
+    when(videoRepository.save(any(Video.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    // Act
+    videoService.updateVideoStatus(videoId, VideoStatus.REJECTED);
+
+    // Assert
+    verify(videoEventPublisher)
+        .publishVideoStatusChanged(videoId, List.of(locationId), "APPROVED", "REJECTED");
   }
 
   @Test
