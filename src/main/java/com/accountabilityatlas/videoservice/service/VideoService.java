@@ -1,9 +1,6 @@
 package com.accountabilityatlas.videoservice.service;
 
-import com.accountabilityatlas.videoservice.domain.Amendment;
-import com.accountabilityatlas.videoservice.domain.Participant;
-import com.accountabilityatlas.videoservice.domain.Video;
-import com.accountabilityatlas.videoservice.domain.VideoStatus;
+import com.accountabilityatlas.videoservice.domain.*;
 import com.accountabilityatlas.videoservice.event.VideoEventPublisher;
 import com.accountabilityatlas.videoservice.exception.UnauthorizedException;
 import com.accountabilityatlas.videoservice.exception.VideoAlreadyExistsException;
@@ -169,23 +166,19 @@ public class VideoService {
   }
 
   @Transactional
-  public Video updateVideoStatus(UUID id, VideoStatus status) {
+  public Video updateVideoStatus(UUID id, VideoStatus newStatus) {
     Video video =
         videoRepository.findByIdWithLocations(id).orElseThrow(() -> new VideoNotFoundException(id));
     VideoStatus previousStatus = video.getStatus();
-    video.setStatus(status);
+    video.setStatus(newStatus);
     Video saved = videoRepository.save(video);
 
     // Publish status change event for location-service to update video counts
-    List<UUID> locationIds = saved.getLocations().stream().map(loc -> loc.getLocationId()).toList();
-    if (!locationIds.isEmpty()) {
-      if (status == VideoStatus.APPROVED && previousStatus != VideoStatus.APPROVED) {
-        videoEventPublisher.publishVideoStatusChanged(
-            saved.getId(), locationIds, previousStatus.name(), status.name());
-      } else if (previousStatus == VideoStatus.APPROVED && status != VideoStatus.APPROVED) {
-        videoEventPublisher.publishVideoStatusChanged(
-            saved.getId(), locationIds, previousStatus.name(), status.name());
-      }
+    List<UUID> locationIds = saved.getLocations().stream().map(VideoLocation::getLocationId).toList();
+    if (!locationIds.isEmpty() &&
+            ((newStatus == VideoStatus.APPROVED && previousStatus != VideoStatus.APPROVED) ||
+                    (previousStatus == VideoStatus.APPROVED && newStatus != VideoStatus.APPROVED))) {
+      videoEventPublisher.publishVideoStatusChanged(saved.getId(), locationIds, previousStatus.name(), newStatus.name());
     }
 
     return saved;
