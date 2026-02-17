@@ -174,11 +174,13 @@ public class VideoService {
     Video saved = videoRepository.save(video);
 
     // Publish status change event for location-service to update video counts
-    List<UUID> locationIds = saved.getLocations().stream().map(VideoLocation::getLocationId).toList();
-    if (!locationIds.isEmpty() &&
-            ((newStatus == VideoStatus.APPROVED && previousStatus != VideoStatus.APPROVED) ||
-                    (previousStatus == VideoStatus.APPROVED && newStatus != VideoStatus.APPROVED))) {
-      videoEventPublisher.publishVideoStatusChanged(saved.getId(), locationIds, previousStatus.name(), newStatus.name());
+    List<UUID> locationIds =
+        saved.getLocations().stream().map(VideoLocation::getLocationId).toList();
+    if (!locationIds.isEmpty()
+        && ((newStatus == VideoStatus.APPROVED && previousStatus != VideoStatus.APPROVED)
+            || (previousStatus == VideoStatus.APPROVED && newStatus != VideoStatus.APPROVED))) {
+      videoEventPublisher.publishVideoStatusChanged(
+          saved.getId(), locationIds, previousStatus.name(), newStatus.name());
     }
 
     return saved;
