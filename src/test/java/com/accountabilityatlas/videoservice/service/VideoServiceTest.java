@@ -355,6 +355,29 @@ class VideoServiceTest {
 
     // Assert
     assertThat(updated.getStatus()).isEqualTo(VideoStatus.APPROVED);
+    verify(videoEventPublisher, never()).publishVideoStatusChanged(any(), any(), any(), any());
+  }
+
+  @Test
+  void updateVideoStatus_nonApprovedTransition_doesNotPublishEvent() {
+    // Arrange
+    UUID locationId = UUID.randomUUID();
+    VideoLocation videoLocation = new VideoLocation();
+    videoLocation.setLocationId(locationId);
+
+    Video video = new Video();
+    video.setId(videoId);
+    video.setStatus(VideoStatus.PENDING);
+    video.setLocations(List.of(videoLocation));
+    when(videoRepository.findByIdWithLocations(videoId)).thenReturn(Optional.of(video));
+    when(videoRepository.save(any(Video.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    // Act
+    videoService.updateVideoStatus(videoId, VideoStatus.REJECTED);
+
+    // Assert
+    verify(videoEventPublisher, never()).publishVideoStatusChanged(any(), any(), any(), any());
   }
 
   @Test
