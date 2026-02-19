@@ -495,7 +495,7 @@ components:
 
     Participant:
       type: string
-      enum: [POLICE, GOVERNMENT, BUSINESS, CITIZEN]
+      enum: [POLICE, GOVERNMENT, BUSINESS, CITIZEN, SECURITY]
       description: Types of participants in the recorded encounter
 
     VideoStatus:
