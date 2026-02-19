@@ -569,6 +569,11 @@ components:
           type: string
           format: uuid
           description: User ID of submitter
+        rejectionReason:
+          type: string
+          maxLength: 500
+          description: Reason for rejection (only present for rejected videos, visible to owner and moderators)
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -604,6 +609,11 @@ components:
             $ref: '#/components/schemas/Participant'
         status:
           $ref: '#/components/schemas/VideoStatus'
+        rejectionReason:
+          type: string
+          maxLength: 500
+          description: Reason for rejection (only present for rejected videos, visible to owner and moderators)
+          nullable: true
         primaryLocation:
           $ref: '#/components/schemas/LocationSummary'
         createdAt:

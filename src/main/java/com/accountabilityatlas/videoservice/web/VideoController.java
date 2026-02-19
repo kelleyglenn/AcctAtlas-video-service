@@ -274,6 +274,7 @@ public class VideoController implements VideosApi, VideoLocationsApi {
         com.accountabilityatlas.videoservice.web.model.VideoStatus.valueOf(
             video.getStatus().name()));
     detail.setSubmittedBy(video.getSubmittedBy());
+    detail.setRejectionReason(video.getRejectionReason());
     detail.setCreatedAt(video.getCreatedAt().atOffset(java.time.ZoneOffset.UTC));
     detail.setLocations(video.getLocations().stream().map(this::toVideoLocationModel).toList());
     return detail;
@@ -309,6 +310,7 @@ public class VideoController implements VideosApi, VideoLocationsApi {
     summary.setStatus(
         com.accountabilityatlas.videoservice.web.model.VideoStatus.valueOf(
             video.getStatus().name()));
+    summary.setRejectionReason(video.getRejectionReason());
     summary.setCreatedAt(video.getCreatedAt().atOffset(java.time.ZoneOffset.UTC));
     return summary;
   }

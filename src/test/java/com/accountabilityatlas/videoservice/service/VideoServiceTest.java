@@ -351,7 +351,7 @@ class VideoServiceTest {
         .thenAnswer(invocation -> invocation.getArgument(0));
 
     // Act
-    Video updated = videoService.updateVideoStatus(videoId, VideoStatus.APPROVED);
+    Video updated = videoService.updateVideoStatus(videoId, VideoStatus.APPROVED, null);
 
     // Assert
     assertThat(updated.getStatus()).isEqualTo(VideoStatus.APPROVED);
@@ -374,7 +374,7 @@ class VideoServiceTest {
         .thenAnswer(invocation -> invocation.getArgument(0));
 
     // Act
-    videoService.updateVideoStatus(videoId, VideoStatus.REJECTED);
+    videoService.updateVideoStatus(videoId, VideoStatus.REJECTED, null);
 
     // Assert
     verify(videoEventPublisher, never()).publishVideoStatusChanged(any(), any(), any(), any());
@@ -396,7 +396,7 @@ class VideoServiceTest {
         .thenAnswer(invocation -> invocation.getArgument(0));
 
     // Act
-    videoService.updateVideoStatus(videoId, VideoStatus.APPROVED);
+    videoService.updateVideoStatus(videoId, VideoStatus.APPROVED, null);
 
     // Assert
     verify(videoEventPublisher)
@@ -419,11 +419,30 @@ class VideoServiceTest {
         .thenAnswer(invocation -> invocation.getArgument(0));
 
     // Act
-    videoService.updateVideoStatus(videoId, VideoStatus.REJECTED);
+    videoService.updateVideoStatus(videoId, VideoStatus.REJECTED, null);
 
     // Assert
     verify(videoEventPublisher)
         .publishVideoStatusChanged(videoId, List.of(locationId), "APPROVED", "REJECTED");
+  }
+
+  @Test
+  void updateVideoStatus_withRejectionReason_setsReasonOnVideo() {
+    // Arrange
+    Video video = new Video();
+    video.setId(videoId);
+    video.setStatus(VideoStatus.PENDING);
+    video.setLocations(Collections.emptyList());
+    when(videoRepository.findByIdWithLocations(videoId)).thenReturn(Optional.of(video));
+    when(videoRepository.save(any(Video.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    // Act
+    Video updated = videoService.updateVideoStatus(videoId, VideoStatus.REJECTED, "OFF_TOPIC");
+
+    // Assert
+    assertThat(updated.getStatus()).isEqualTo(VideoStatus.REJECTED);
+    assertThat(updated.getRejectionReason()).isEqualTo("OFF_TOPIC");
   }
 
   @Test

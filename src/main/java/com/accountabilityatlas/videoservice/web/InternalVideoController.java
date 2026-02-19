@@ -56,7 +56,7 @@ public class InternalVideoController {
   public ResponseEntity<Void> updateStatus(
       @PathVariable UUID id, @RequestBody UpdateStatusRequest request) {
     VideoStatus status = VideoStatus.valueOf(request.status());
-    videoService.updateVideoStatus(id, status);
+    videoService.updateVideoStatus(id, status, null);
     return ResponseEntity.noContent().build();
   }
 
