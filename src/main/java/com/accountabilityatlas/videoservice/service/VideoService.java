@@ -166,11 +166,6 @@ public class VideoService {
   }
 
   @Transactional
-  public Video updateVideoStatus(UUID id, VideoStatus newStatus) {
-    return updateVideoStatus(id, newStatus, null);
-  }
-
-  @Transactional
   public Video updateVideoStatus(UUID id, VideoStatus newStatus, String rejectionReason) {
     Video video =
         videoRepository.findByIdWithLocations(id).orElseThrow(() -> new VideoNotFoundException(id));

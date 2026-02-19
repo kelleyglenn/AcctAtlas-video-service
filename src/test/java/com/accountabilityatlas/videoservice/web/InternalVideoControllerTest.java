@@ -53,7 +53,7 @@ class InternalVideoControllerTest {
     // Arrange
     UUID id = UUID.randomUUID();
     Video video = new Video();
-    when(videoService.updateVideoStatus(id, VideoStatus.APPROVED)).thenReturn(video);
+    when(videoService.updateVideoStatus(id, VideoStatus.APPROVED, null)).thenReturn(video);
 
     var request = new InternalVideoController.UpdateStatusRequest("APPROVED");
 

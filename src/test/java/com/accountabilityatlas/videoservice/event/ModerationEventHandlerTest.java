@@ -36,13 +36,13 @@ class ModerationEventHandlerTest {
     Video video = new Video();
     video.setId(videoId);
     video.setStatus(VideoStatus.APPROVED);
-    when(videoService.updateVideoStatus(videoId, VideoStatus.APPROVED)).thenReturn(video);
+    when(videoService.updateVideoStatus(videoId, VideoStatus.APPROVED, null)).thenReturn(video);
 
     // Act
     handler.handleModerationEvent(event);
 
     // Assert
-    verify(videoService).updateVideoStatus(videoId, VideoStatus.APPROVED);
+    verify(videoService).updateVideoStatus(videoId, VideoStatus.APPROVED, null);
   }
 
   @Test

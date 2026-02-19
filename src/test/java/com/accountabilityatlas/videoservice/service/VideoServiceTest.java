@@ -351,7 +351,7 @@ class VideoServiceTest {
         .thenAnswer(invocation -> invocation.getArgument(0));
 
     // Act
-    Video updated = videoService.updateVideoStatus(videoId, VideoStatus.APPROVED);
+    Video updated = videoService.updateVideoStatus(videoId, VideoStatus.APPROVED, null);
 
     // Assert
     assertThat(updated.getStatus()).isEqualTo(VideoStatus.APPROVED);
@@ -374,7 +374,7 @@ class VideoServiceTest {
         .thenAnswer(invocation -> invocation.getArgument(0));
 
     // Act
-    videoService.updateVideoStatus(videoId, VideoStatus.REJECTED);
+    videoService.updateVideoStatus(videoId, VideoStatus.REJECTED, null);
 
     // Assert
     verify(videoEventPublisher, never()).publishVideoStatusChanged(any(), any(), any(), any());
@@ -396,7 +396,7 @@ class VideoServiceTest {
         .thenAnswer(invocation -> invocation.getArgument(0));
 
     // Act
-    videoService.updateVideoStatus(videoId, VideoStatus.APPROVED);
+    videoService.updateVideoStatus(videoId, VideoStatus.APPROVED, null);
 
     // Assert
     verify(videoEventPublisher)
@@ -419,7 +419,7 @@ class VideoServiceTest {
         .thenAnswer(invocation -> invocation.getArgument(0));
 
     // Act
-    videoService.updateVideoStatus(videoId, VideoStatus.REJECTED);
+    videoService.updateVideoStatus(videoId, VideoStatus.REJECTED, null);
 
     // Assert
     verify(videoEventPublisher)

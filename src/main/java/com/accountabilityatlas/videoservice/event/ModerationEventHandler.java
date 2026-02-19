@@ -37,7 +37,7 @@ public class ModerationEventHandler {
         "Received VideoApproved event from SQS: videoId={}, reviewerId={}",
         event.videoId(),
         event.reviewerId());
-    videoService.updateVideoStatus(event.videoId(), VideoStatus.APPROVED);
+    videoService.updateVideoStatus(event.videoId(), VideoStatus.APPROVED, null);
     log.info("Updated video {} status to APPROVED", event.videoId());
   }
 
