@@ -4,5 +4,6 @@ public enum Participant {
   POLICE,
   GOVERNMENT,
   BUSINESS,
-  CITIZEN
+  CITIZEN,
+  SECURITY
 }

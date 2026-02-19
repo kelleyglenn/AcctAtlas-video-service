@@ -10,7 +10,7 @@ The Video Service is the core content management service for AccountabilityAtlas
 - YouTube API integration for metadata fetching
 - YouTube URL validation
 - Amendment categorization (1st, 2nd, 4th, 5th)
-- Participant tagging (police, government, business, citizen)
+- Participant tagging (police, government, business, citizen, security)
 - Video-location associations (multi-location support)
 - Ownership tracking and enforcement
 
@@ -96,7 +96,7 @@ VideoLocation (temporal - sys_period tracks history)
 └── sysPeriod: tstzrange  // lower bound = added time
 
 enum Amendment { FIRST, SECOND, FOURTH, FIFTH }
-enum Participant { POLICE, GOVERNMENT, BUSINESS, CITIZEN }
+enum Participant { POLICE, GOVERNMENT, BUSINESS, CITIZEN, SECURITY }
 ```
 
 ## API Endpoints
