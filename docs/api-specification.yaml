@@ -572,7 +572,7 @@ components:
         rejectionReason:
           type: string
           maxLength: 500
-          description: Reason for rejection (only present for rejected videos, only visible to owner)
+          description: Reason for rejection (only present for rejected videos, visible to owner and moderators)
           nullable: true
         createdAt:
           type: string
@@ -612,7 +612,7 @@ components:
         rejectionReason:
           type: string
           maxLength: 500
-          description: Reason for rejection (only present for rejected videos, only visible to owner)
+          description: Reason for rejection (only present for rejected videos, visible to owner and moderators)
           nullable: true
         primaryLocation:
           $ref: '#/components/schemas/LocationSummary'

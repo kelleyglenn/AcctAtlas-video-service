@@ -165,6 +165,7 @@ public class VideoService {
     return videoRepository.save(video);
   }
 
+  @Transactional
   public Video updateVideoStatus(UUID id, VideoStatus newStatus) {
     return updateVideoStatus(id, newStatus, null);
   }
