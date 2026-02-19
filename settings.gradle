@@ -6,6 +6,7 @@ pluginManagement {
         id 'com.diffplug.spotless' version "${spotlessVersion}"
         id 'net.ltgt.errorprone' version "${errorProneVersion}"
         id 'org.openapi.generator' version "${openApiGeneratorVersion}"
+        id 'org.sonarqube' version "${sonarqubeVersion}"
     }
 }
 
