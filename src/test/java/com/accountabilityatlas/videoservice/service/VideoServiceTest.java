@@ -427,6 +427,25 @@ class VideoServiceTest {
   }
 
   @Test
+  void updateVideoStatus_withRejectionReason_setsReasonOnVideo() {
+    // Arrange
+    Video video = new Video();
+    video.setId(videoId);
+    video.setStatus(VideoStatus.PENDING);
+    video.setLocations(Collections.emptyList());
+    when(videoRepository.findByIdWithLocations(videoId)).thenReturn(Optional.of(video));
+    when(videoRepository.save(any(Video.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    // Act
+    Video updated = videoService.updateVideoStatus(videoId, VideoStatus.REJECTED, "OFF_TOPIC");
+
+    // Assert
+    assertThat(updated.getStatus()).isEqualTo(VideoStatus.REJECTED);
+    assertThat(updated.getRejectionReason()).isEqualTo("OFF_TOPIC");
+  }
+
+  @Test
   void canView_variousStatuses_appliesVisibilityRules() {
     // Arrange
     Video approved = new Video();
