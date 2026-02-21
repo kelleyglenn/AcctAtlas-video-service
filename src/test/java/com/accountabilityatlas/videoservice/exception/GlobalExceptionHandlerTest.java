@@ -115,6 +115,24 @@ class GlobalExceptionHandlerTest {
   }
 
   @Test
+  void handleMetadataExtraction_exception_returnsServiceUnavailableResponse() {
+    // Arrange
+    MetadataExtractionException exception =
+        new MetadataExtractionException("AI extraction failed: timeout");
+
+    // Act
+    ResponseEntity<GlobalExceptionHandler.ErrorResponse> response =
+        handler.handleMetadataExtraction(exception);
+
+    // Assert
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+    assertNotNull(response.getBody());
+    assertThat(response.getBody().code()).isEqualTo("AI_SERVICE_UNAVAILABLE");
+    assertThat(response.getBody().message()).isEqualTo("AI extraction failed: timeout");
+    assertThat(response.getBody().traceId()).isNotBlank();
+  }
+
+  @Test
   void handleUnauthorized_exception_returnsForbiddenResponse() {
     // Arrange
     UnauthorizedException exception = new UnauthorizedException("no");

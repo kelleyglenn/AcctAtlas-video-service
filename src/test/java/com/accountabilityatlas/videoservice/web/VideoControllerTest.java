@@ -541,6 +541,37 @@ class VideoControllerTest {
     assertThat(thrown).isInstanceOf(InvalidYouTubeUrlException.class);
   }
 
+  @Test
+  void extractVideoMetadata_serviceThrows_propagatesMetadataExtractionException() {
+    setAuth();
+    String url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+    String videoId = "dQw4w9WgXcQ";
+    YouTubeMetadata metadata =
+        new YouTubeMetadata(
+            videoId,
+            "Test Title",
+            "Test Description",
+            "http://thumb",
+            300,
+            "channel",
+            "Channel",
+            Instant.parse("2024-01-01T00:00:00Z"));
+
+    when(youTubeService.extractVideoId(url)).thenReturn(videoId);
+    when(youTubeService.fetchMetadata(videoId)).thenReturn(metadata);
+    when(metadataExtractionService.extract(metadata.title(), metadata.description()))
+        .thenThrow(
+            new com.accountabilityatlas.videoservice.exception.MetadataExtractionException(
+                "AI extraction not configured"));
+
+    Throwable thrown = catchThrowable(() -> videoController.extractVideoMetadata(url));
+
+    assertThat(thrown)
+        .isInstanceOf(
+            com.accountabilityatlas.videoservice.exception.MetadataExtractionException.class)
+        .hasMessageContaining("AI extraction not configured");
+  }
+
   private void setAuth() {
     setAuthWithTrustTier(null);
   }
