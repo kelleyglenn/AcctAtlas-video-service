@@ -1,0 +1,9 @@
+spring:
+  flyway:
+    locations:
+      - classpath:db/migration
+
+logging:
+  level:
+    com.accountabilityatlas: INFO
+    org.springframework.security: WARN
