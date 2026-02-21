@@ -227,7 +227,8 @@ public class VideoController implements VideosApi, VideoLocationsApi {
     String videoId = youTubeService.extractVideoId(youtubeUrl);
     YouTubeMetadata metadata = youTubeService.fetchMetadata(videoId);
     MetadataExtractionService.ExtractionResult result =
-        metadataExtractionService.extract(metadata.title(), metadata.description());
+        metadataExtractionService.extract(
+            metadata.title(), metadata.description(), metadata.recordingDate());
     return ResponseEntity.ok(toVideoMetadataExtraction(result));
   }
 

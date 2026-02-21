@@ -53,7 +53,7 @@ class MetadataExtractionServiceTest {
     MetadataExtractionService noKeyService =
         new MetadataExtractionService(properties, objectMapper);
 
-    Throwable thrown = catchThrowable(() -> noKeyService.extract("Title", "Description"));
+    Throwable thrown = catchThrowable(() -> noKeyService.extract("Title", "Description", null));
 
     assertThat(thrown)
         .isInstanceOf(MetadataExtractionException.class)
@@ -67,7 +67,7 @@ class MetadataExtractionServiceTest {
     MetadataExtractionService noKeyService =
         new MetadataExtractionService(properties, objectMapper);
 
-    Throwable thrown = catchThrowable(() -> noKeyService.extract("Title", "Description"));
+    Throwable thrown = catchThrowable(() -> noKeyService.extract("Title", "Description", null));
 
     assertThat(thrown)
         .isInstanceOf(MetadataExtractionException.class)
@@ -100,7 +100,7 @@ class MetadataExtractionServiceTest {
     stubMessageResponse(json);
 
     MetadataExtractionService.ExtractionResult result =
-        service.extract("First Amendment Audit", "Auditing city hall in Springfield");
+        service.extract("First Amendment Audit", "Auditing city hall in Springfield", null);
 
     assertThat(result).isNotNull();
     assertThat(result.amendments()).containsExactly("FIRST", "FOURTH");
@@ -141,7 +141,7 @@ class MetadataExtractionServiceTest {
     stubMessageResponse(json);
 
     MetadataExtractionService.ExtractionResult result =
-        service.extract("Police Encounter", "Recording the police");
+        service.extract("Police Encounter", "Recording the police", null);
 
     assertThat(result).isNotNull();
     assertThat(result.amendments()).containsExactly("FIRST");
@@ -174,7 +174,7 @@ class MetadataExtractionServiceTest {
     stubMessageResponse(json);
 
     MetadataExtractionService.ExtractionResult result =
-        service.extract("Fourth Amendment Test", "Description");
+        service.extract("Fourth Amendment Test", "Description", null);
 
     assertThat(result).isNotNull();
     assertThat(result.amendments()).containsExactly("FOURTH");
@@ -185,7 +185,7 @@ class MetadataExtractionServiceTest {
     when(mockMessageService.create(any(MessageCreateParams.class)))
         .thenThrow(new RuntimeException("API connection failed"));
 
-    Throwable thrown = catchThrowable(() -> service.extract("Title", "Description"));
+    Throwable thrown = catchThrowable(() -> service.extract("Title", "Description", null));
 
     assertThat(thrown)
         .isInstanceOf(MetadataExtractionException.class)
@@ -200,7 +200,7 @@ class MetadataExtractionServiceTest {
     when(emptyMessage.content()).thenReturn(List.of());
     when(mockMessageService.create(any(MessageCreateParams.class))).thenReturn(emptyMessage);
 
-    Throwable thrown = catchThrowable(() -> service.extract("Title", "Description"));
+    Throwable thrown = catchThrowable(() -> service.extract("Title", "Description", null));
 
     assertThat(thrown)
         .isInstanceOf(MetadataExtractionException.class)
@@ -216,7 +216,7 @@ class MetadataExtractionServiceTest {
     when(message.content()).thenReturn(List.of(nonTextBlock));
     when(mockMessageService.create(any(MessageCreateParams.class))).thenReturn(message);
 
-    Throwable thrown = catchThrowable(() -> service.extract("Title", "Description"));
+    Throwable thrown = catchThrowable(() -> service.extract("Title", "Description", null));
 
     assertThat(thrown)
         .isInstanceOf(MetadataExtractionException.class)
@@ -227,7 +227,7 @@ class MetadataExtractionServiceTest {
   void extract_invalidJson_throwsMetadataExtractionException() {
     stubMessageResponse("this is not valid json");
 
-    Throwable thrown = catchThrowable(() -> service.extract("Title", "Description"));
+    Throwable thrown = catchThrowable(() -> service.extract("Title", "Description", null));
 
     assertThat(thrown)
         .isInstanceOf(MetadataExtractionException.class)
@@ -253,7 +253,7 @@ class MetadataExtractionServiceTest {
 
     stubMessageResponse(json);
 
-    MetadataExtractionService.ExtractionResult result = service.extract("Title", null);
+    MetadataExtractionService.ExtractionResult result = service.extract("Title", null, null);
 
     assertThat(result).isNotNull();
     assertThat(result.amendments()).containsExactly("FIRST");
@@ -279,7 +279,8 @@ class MetadataExtractionServiceTest {
 
     stubMessageResponse(json);
 
-    MetadataExtractionService.ExtractionResult result = service.extract("Title", "Description");
+    MetadataExtractionService.ExtractionResult result =
+        service.extract("Title", "Description", null);
 
     assertThat(result).isNotNull();
     assertThat(result.amendments()).containsExactly("FIRST");

@@ -416,7 +416,8 @@ class VideoControllerTest {
             212,
             "UCuAXFkgsw1L7xaCfnd5JJOw",
             "Test Channel",
-            Instant.parse("2024-06-01T12:00:00Z"));
+            Instant.parse("2024-06-01T12:00:00Z"),
+            null);
     when(youTubeService.extractVideoId(url)).thenReturn(videoId);
     when(youTubeService.fetchMetadata(videoId)).thenReturn(metadata);
     when(videoService.findByYoutubeId(videoId)).thenReturn(Optional.empty());
@@ -450,7 +451,8 @@ class VideoControllerTest {
             212,
             "UCuAXFkgsw1L7xaCfnd5JJOw",
             "Test Channel",
-            Instant.parse("2024-06-01T12:00:00Z"));
+            Instant.parse("2024-06-01T12:00:00Z"),
+            null);
     Video existingVideo = sampleVideo();
     when(youTubeService.extractVideoId(url)).thenReturn(videoId);
     when(youTubeService.fetchMetadata(videoId)).thenReturn(metadata);
@@ -503,7 +505,8 @@ class VideoControllerTest {
             300,
             "channel",
             "Channel",
-            Instant.parse("2024-01-01T00:00:00Z"));
+            Instant.parse("2024-01-01T00:00:00Z"),
+            "2024-01-01");
     MetadataExtractionService.ExtractionResult result =
         new MetadataExtractionService.ExtractionResult(
             List.of("FIRST"),
@@ -515,7 +518,8 @@ class VideoControllerTest {
 
     when(youTubeService.extractVideoId(url)).thenReturn(videoId);
     when(youTubeService.fetchMetadata(videoId)).thenReturn(metadata);
-    when(metadataExtractionService.extract(metadata.title(), metadata.description()))
+    when(metadataExtractionService.extract(
+            metadata.title(), metadata.description(), metadata.recordingDate()))
         .thenReturn(result);
 
     VideoMetadataExtraction extraction = videoController.extractVideoMetadata(url).getBody();
@@ -555,11 +559,13 @@ class VideoControllerTest {
             300,
             "channel",
             "Channel",
-            Instant.parse("2024-01-01T00:00:00Z"));
+            Instant.parse("2024-01-01T00:00:00Z"),
+            null);
 
     when(youTubeService.extractVideoId(url)).thenReturn(videoId);
     when(youTubeService.fetchMetadata(videoId)).thenReturn(metadata);
-    when(metadataExtractionService.extract(metadata.title(), metadata.description()))
+    when(metadataExtractionService.extract(
+            metadata.title(), metadata.description(), metadata.recordingDate()))
         .thenThrow(
             new com.accountabilityatlas.videoservice.exception.MetadataExtractionException(
                 "AI extraction not configured"));

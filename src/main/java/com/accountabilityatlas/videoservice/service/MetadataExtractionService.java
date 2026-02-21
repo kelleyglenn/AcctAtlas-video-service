@@ -72,17 +72,22 @@ public class MetadataExtractionService {
 
   @CircuitBreaker(name = "anthropic")
   @Retry(name = "anthropic")
-  public ExtractionResult extract(String title, String description) {
+  public ExtractionResult extract(String title, String description, String recordingDate) {
     if (client == null) {
       throw new MetadataExtractionException(
           "AI extraction is not configured. Set the ANTHROPIC_API_KEY environment variable.");
     }
 
-    String userMessage =
-        "Extract metadata from this YouTube video:\n\nTitle: "
-            + title
-            + "\n\nDescription:\n"
-            + (description != null ? description : "");
+    StringBuilder sb = new StringBuilder();
+    sb.append("Extract metadata from this YouTube video:\n\nTitle: ").append(title);
+    sb.append("\n\nDescription:\n").append(description != null ? description : "");
+    if (recordingDate != null && !recordingDate.isBlank()) {
+      sb.append("\n\nRecording Date (from YouTube metadata): ").append(recordingDate);
+    }
+    String userMessage = sb.toString();
+
+    log.debug("Extraction request for video: {}", title);
+    log.debug("User message sent to Claude:\n{}", userMessage);
 
     try {
       MessageCreateParams params =
@@ -96,6 +101,8 @@ public class MetadataExtractionService {
       Message response = client.messages().create(params);
 
       String text = extractText(response);
+      log.debug("Raw Claude response:\n{}", text);
+
       String json = stripCodeFences(text);
 
       return objectMapper.readValue(json, ExtractionResult.class);

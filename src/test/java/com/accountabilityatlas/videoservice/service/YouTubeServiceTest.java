@@ -103,7 +103,8 @@ class YouTubeServiceTest {
                           "high": { "url": "http://thumb" }
                         }
                       },
-                      "contentDetails": { "duration": "PT2M" }
+                      "contentDetails": { "duration": "PT2M" },
+                      "recordingDetails": { "recordingDate": "2023-12-15" }
                     }]
                   }
                   """));
@@ -124,6 +125,7 @@ class YouTubeServiceTest {
       assertThat(metadata.thumbnailUrl()).isEqualTo("http://thumb");
       assertThat(metadata.durationSeconds()).isEqualTo(120);
       assertThat(metadata.publishedAt()).isEqualTo(Instant.parse("2024-01-01T00:00:00Z"));
+      assertThat(metadata.recordingDate()).isEqualTo("2023-12-15");
     }
   }
 }
