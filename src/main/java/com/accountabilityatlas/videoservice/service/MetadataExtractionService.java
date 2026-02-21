@@ -12,8 +12,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -53,9 +51,6 @@ public class MetadataExtractionService {
           + "videoDate should be in YYYY-MM-DD format, or null if not determinable.\n"
           + "location should be null if not determinable.\n"
           + "confidence scores should be between 0.0 and 1.0.";
-
-  private static final Pattern CODE_FENCE_PATTERN =
-      Pattern.compile("(?s)^\\s*```(?:json)?\\s*(.*?)\\s*```\\s*$");
 
   private final AnthropicClient client;
   private final AnthropicProperties properties;
@@ -122,11 +117,18 @@ public class MetadataExtractionService {
   }
 
   private String stripCodeFences(String text) {
-    Matcher matcher = CODE_FENCE_PATTERN.matcher(text);
-    if (matcher.matches()) {
-      return matcher.group(1);
+    String stripped = text.strip();
+    if (stripped.startsWith("```")) {
+      int firstNewline = stripped.indexOf('\n');
+      if (firstNewline < 0) {
+        return stripped;
+      }
+      int lastFence = stripped.lastIndexOf("```");
+      if (lastFence > firstNewline) {
+        return stripped.substring(firstNewline + 1, lastFence).strip();
+      }
     }
-    return text.strip();
+    return stripped;
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
