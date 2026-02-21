@@ -67,6 +67,9 @@ dependencies {
     testImplementation "org.testcontainers:junit-jupiter:${testcontainersVersion}"
     testImplementation "org.testcontainers:postgresql:${testcontainersVersion}"
     testImplementation 'com.squareup.okhttp3:mockwebserver:4.12.0'
+
+    // Anthropic AI SDK
+    implementation 'com.anthropic:anthropic-java:2.15.0'
 }
 
 // ---- OpenAPI Generator ----

@@ -67,6 +67,14 @@ public class GlobalExceptionHandler {
                 "LOCATION_ALREADY_LINKED", ex.getMessage(), null, UUID.randomUUID().toString()));
   }
 
+  @ExceptionHandler(MetadataExtractionException.class)
+  public ResponseEntity<ErrorResponse> handleMetadataExtraction(MetadataExtractionException ex) {
+    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+        .body(
+            new ErrorResponse(
+                "AI_SERVICE_UNAVAILABLE", ex.getMessage(), null, UUID.randomUUID().toString()));
+  }
+
   @ExceptionHandler(UnauthorizedException.class)
   public ResponseEntity<ErrorResponse> handleUnauthorized(UnauthorizedException ex) {
     return ResponseEntity.status(HttpStatus.FORBIDDEN)

@@ -63,6 +63,11 @@ app:
     base-url: https://www.googleapis.com/youtube/v3
     cache-ttl: 24h
     timeout: 5s
+  anthropic:
+    api-key: ${ANTHROPIC_API_KEY:}
+    model: claude-haiku-4-5-20251001
+    max-tokens: 1024
+    timeout: 30s
   location-service:
     base-url: ${LOCATION_SERVICE_URL:http://localhost:8083}
   internal:
@@ -78,13 +83,22 @@ resilience4j:
         slidingWindowSize: 5
         failureRateThreshold: 50
         waitDurationInOpenState: 30s
+      anthropic:
+        slidingWindowSize: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 60s
   retry:
     instances:
       youtube:
         maxAttempts: 3
         waitDuration: 1s
         exponentialBackoffMultiplier: 2
+      anthropic:
+        maxAttempts: 2
+        waitDuration: 2s
   timelimiter:
     instances:
       youtube:
         timeoutDuration: 5s
+      anthropic:
+        timeoutDuration: 30s

@@ -207,6 +207,62 @@ paths:
                 message: "The YouTube video is private, deleted, or does not exist"
                 traceId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 
+  /videos/extract:
+    get:
+      operationId: extractVideoMetadata
+      summary: Extract metadata from YouTube video using AI
+      description: |
+        Uses AI to analyze a YouTube video's title and description to suggest
+        amendments, participants, incident date, and location.
+        Requires authentication to prevent abuse.
+      tags: [Videos]
+      parameters:
+        - name: youtubeUrl
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Full YouTube URL to extract metadata from
+      responses:
+        '200':
+          description: AI-extracted metadata suggestions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoMetadataExtraction'
+        '400':
+          description: Invalid YouTube URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "INVALID_YOUTUBE_URL"
+                message: "Invalid YouTube URL: https://example.com/not-a-video"
+                traceId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          description: YouTube video not found or unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "YOUTUBE_VIDEO_UNAVAILABLE"
+                message: "The YouTube video is private, deleted, or does not exist"
+                traceId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        '503':
+          description: AI service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "AI_SERVICE_UNAVAILABLE"
+                message: "AI metadata extraction is temporarily unavailable"
+                traceId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+
   /videos/{id}:
     get:
       operationId: getVideo
@@ -485,13 +541,14 @@ components:
     # Enums
     Amendment:
       type: string
-      enum: [FIRST, SECOND, FOURTH, FIFTH]
+      enum: [FIRST, SECOND, FOURTH, FIFTH, FOURTEENTH]
       description: |
         Constitutional amendment categories:
         - `FIRST`: Freedom of speech, press, assembly
         - `SECOND`: Right to bear arms
         - `FOURTH`: Protection against unreasonable search/seizure
         - `FIFTH`: Right against self-incrimination
+        - `FOURTEENTH`: Due process and equal protection
 
     Participant:
       type: string
@@ -893,6 +950,80 @@ components:
         message:
           type: string
           examples: ["must be a valid YouTube URL"]
+
+    VideoMetadataExtraction:
+      type: object
+      description: AI-extracted metadata suggestions for a YouTube video
+      required: [amendments, participants, confidence]
+      properties:
+        amendments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Amendment'
+          description: Suggested constitutional amendments
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/Participant'
+          description: Suggested participant types
+        videoDate:
+          type: string
+          format: date
+          nullable: true
+          description: Suggested incident date (null if not determinable)
+        location:
+          $ref: '#/components/schemas/ExtractedLocation'
+        confidence:
+          $ref: '#/components/schemas/ConfidenceScores'
+
+    ExtractedLocation:
+      type: object
+      description: AI-extracted location suggestion
+      nullable: true
+      properties:
+        name:
+          type: string
+          description: Place name
+        city:
+          type: string
+          nullable: true
+        state:
+          type: string
+          nullable: true
+          description: US state abbreviation
+        latitude:
+          type: number
+          format: double
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          nullable: true
+
+    ConfidenceScores:
+      type: object
+      description: Confidence scores (0.0-1.0) for each extracted field
+      properties:
+        amendments:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+        participants:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+        videoDate:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+        location:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
 
   responses:
     BadRequest:

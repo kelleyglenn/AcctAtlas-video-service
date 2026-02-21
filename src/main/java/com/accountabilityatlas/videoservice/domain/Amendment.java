@@ -4,5 +4,6 @@ public enum Amendment {
   FIRST,
   SECOND,
   FOURTH,
-  FIFTH
+  FIFTH,
+  FOURTEENTH
 }
