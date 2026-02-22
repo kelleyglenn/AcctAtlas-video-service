@@ -519,7 +519,7 @@ class VideoControllerTest {
     when(youTubeService.extractVideoId(url)).thenReturn(videoId);
     when(youTubeService.fetchMetadata(videoId)).thenReturn(metadata);
     when(metadataExtractionService.extract(
-            metadata.title(), metadata.description(), metadata.recordingDate()))
+            metadata.title(), metadata.description(), metadata.publishedAt().toString()))
         .thenReturn(result);
 
     VideoMetadataExtraction extraction = videoController.extractVideoMetadata(url).getBody();
@@ -565,7 +565,7 @@ class VideoControllerTest {
     when(youTubeService.extractVideoId(url)).thenReturn(videoId);
     when(youTubeService.fetchMetadata(videoId)).thenReturn(metadata);
     when(metadataExtractionService.extract(
-            metadata.title(), metadata.description(), metadata.recordingDate()))
+            metadata.title(), metadata.description(), metadata.publishedAt().toString()))
         .thenThrow(
             new com.accountabilityatlas.videoservice.exception.MetadataExtractionException(
                 "AI extraction not configured"));

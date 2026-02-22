@@ -33,9 +33,9 @@ class MetadataExtractionServiceTest {
   void setUp() {
     AnthropicProperties properties = new AnthropicProperties();
     properties.setApiKey("test-api-key");
-    properties.setModel("claude-haiku-4-5-20251001");
-    properties.setMaxTokens(1024);
-    properties.setTimeout(Duration.ofSeconds(30));
+    properties.setModel("claude-sonnet-4-6");
+    properties.setMaxTokens(4096);
+    properties.setTimeout(Duration.ofSeconds(60));
 
     service = new MetadataExtractionService(properties, objectMapper);
 
@@ -178,6 +178,77 @@ class MetadataExtractionServiceTest {
 
     assertThat(result).isNotNull();
     assertThat(result.amendments()).containsExactly("FOURTH");
+  }
+
+  @Test
+  void extract_responseWithXmlThinkingThenJson_parsesJsonFromEnd() {
+    String response =
+        """
+        <evidence_extraction>
+        The title mentions "First Amendment Audit" and "City Hall".
+        The description mentions "police arrived" and "Springfield, IL".
+        </evidence_extraction>
+
+        <amendment_analysis>
+        FIRST amendment is relevant due to "First Amendment Audit".
+        </amendment_analysis>
+
+        <amendment_validation>
+        FIRST: VALID - content is about First Amendment auditing
+        </amendment_validation>
+
+        <date_processing>
+        No date information found. videoDate should be null.
+        </date_processing>
+
+        <location_processing>
+        City Hall in Springfield, IL. No coordinates found.
+        </location_processing>
+
+        <json_construction>
+        amendments: ["FIRST"]
+        participants: ["POLICE"]
+        videoDate: null
+        location: { name: "City Hall", city: "Springfield", state: "IL" }
+        confidence: amendments 0.95, participants 0.9, videoDate null, location 0.85
+        </json_construction>
+
+        {
+          "amendments": ["FIRST"],
+          "participants": ["POLICE"],
+          "videoDate": null,
+          "location": {
+            "name": "City Hall",
+            "city": "Springfield",
+            "state": "IL",
+            "latitude": null,
+            "longitude": null
+          },
+          "confidence": {
+            "amendments": 0.95,
+            "participants": 0.9,
+            "videoDate": null,
+            "location": 0.85
+          }
+        }""";
+
+    stubMessageResponse(response);
+
+    MetadataExtractionService.ExtractionResult result =
+        service.extract("First Amendment Audit - City Hall", "Police arrived in Springfield", null);
+
+    assertThat(result).isNotNull();
+    assertThat(result.amendments()).containsExactly("FIRST");
+    assertThat(result.participants()).containsExactly("POLICE");
+    assertThat(result.videoDate()).isNull();
+    assertThat(result.location()).isNotNull();
+    assertThat(result.location().name()).isEqualTo("City Hall");
+    assertThat(result.location().city()).isEqualTo("Springfield");
+    assertThat(result.location().state()).isEqualTo("IL");
+    assertThat(result.location().latitude()).isNull();
+    assertThat(result.location().longitude()).isNull();
+    assertThat(result.confidence().amendments()).isEqualTo(0.95);
+    assertThat(result.confidence().location()).isEqualTo(0.85);
   }
 
   @Test
