@@ -83,19 +83,29 @@ resilience4j:
         slidingWindowSize: 5
         failureRateThreshold: 50
         waitDurationInOpenState: 30s
+        ignoreExceptions:
+          - com.accountabilityatlas.videoservice.exception.YouTubeVideoNotFoundException
+          - com.accountabilityatlas.videoservice.exception.InvalidYouTubeUrlException
       anthropic:
         slidingWindowSize: 5
         failureRateThreshold: 50
         waitDurationInOpenState: 60s
+        ignoreExceptions:
+          - com.accountabilityatlas.videoservice.exception.MetadataExtractionException
   retry:
     instances:
       youtube:
         maxAttempts: 3
         waitDuration: 1s
         exponentialBackoffMultiplier: 2
+        ignoreExceptions:
+          - com.accountabilityatlas.videoservice.exception.YouTubeVideoNotFoundException
+          - com.accountabilityatlas.videoservice.exception.InvalidYouTubeUrlException
       anthropic:
         maxAttempts: 2
         waitDuration: 2s
+        ignoreExceptions:
+          - com.accountabilityatlas.videoservice.exception.MetadataExtractionException
   timelimiter:
     instances:
       youtube:

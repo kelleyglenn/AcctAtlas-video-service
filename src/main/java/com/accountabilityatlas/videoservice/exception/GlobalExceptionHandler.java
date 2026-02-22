@@ -1,5 +1,6 @@
 package com.accountabilityatlas.videoservice.exception;
 
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import java.util.UUID;
@@ -73,6 +74,14 @@ public class GlobalExceptionHandler {
         .body(
             new ErrorResponse(
                 "AI_SERVICE_UNAVAILABLE", ex.getMessage(), null, UUID.randomUUID().toString()));
+  }
+
+  @ExceptionHandler(CallNotPermittedException.class)
+  public ResponseEntity<ErrorResponse> handleCircuitBreakerOpen(CallNotPermittedException ex) {
+    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+        .body(
+            new ErrorResponse(
+                "SERVICE_UNAVAILABLE", ex.getMessage(), null, UUID.randomUUID().toString()));
   }
 
   @ExceptionHandler(UnauthorizedException.class)
