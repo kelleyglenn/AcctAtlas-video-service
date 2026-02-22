@@ -295,7 +295,9 @@ public class MetadataExtractionService {
       String json = extractJson(text);
 
       return objectMapper.readValue(json, ExtractionResult.class);
-    } catch (JsonProcessingException e) {
+    } catch (MetadataExtractionException e) {
+      throw e;
+    } catch (JsonProcessingException | RuntimeException e) {
       throw new MetadataExtractionException("AI metadata extraction failed: " + e.getMessage(), e);
     }
   }

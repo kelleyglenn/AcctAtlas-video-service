@@ -48,13 +48,16 @@ class MetadataExtractionServiceTest {
 
   @Test
   void extract_noApiKey_throwsMetadataExtractionException() {
+    // Arrange
     AnthropicProperties properties = new AnthropicProperties();
     properties.setApiKey("");
     MetadataExtractionService noKeyService =
         new MetadataExtractionService(properties, objectMapper);
 
+    // Act
     Throwable thrown = catchThrowable(() -> noKeyService.extract("Title", "Description", null));
 
+    // Assert
     assertThat(thrown)
         .isInstanceOf(MetadataExtractionException.class)
         .hasMessageContaining("not configured");
@@ -62,13 +65,16 @@ class MetadataExtractionServiceTest {
 
   @Test
   void extract_nullApiKey_throwsMetadataExtractionException() {
+    // Arrange
     AnthropicProperties properties = new AnthropicProperties();
     properties.setApiKey(null);
     MetadataExtractionService noKeyService =
         new MetadataExtractionService(properties, objectMapper);
 
+    // Act
     Throwable thrown = catchThrowable(() -> noKeyService.extract("Title", "Description", null));
 
+    // Assert
     assertThat(thrown)
         .isInstanceOf(MetadataExtractionException.class)
         .hasMessageContaining("not configured");
@@ -76,6 +82,7 @@ class MetadataExtractionServiceTest {
 
   @Test
   void extract_validResponse_returnsParsedResult() {
+    // Arrange
     String json =
         """
         {
@@ -96,12 +103,13 @@ class MetadataExtractionServiceTest {
             "location": 0.8
           }
         }""";
-
     stubMessageResponse(json);
 
+    // Act
     MetadataExtractionService.ExtractionResult result =
         service.extract("First Amendment Audit", "Auditing city hall in Springfield", null);
 
+    // Assert
     assertThat(result).isNotNull();
     assertThat(result.amendments()).containsExactly("FIRST", "FOURTH");
     assertThat(result.participants()).containsExactly("POLICE", "CITIZEN");
@@ -121,6 +129,7 @@ class MetadataExtractionServiceTest {
 
   @Test
   void extract_responseWithCodeFences_stripsAndParses() {
+    // Arrange
     String json =
         """
         ```json
@@ -137,12 +146,13 @@ class MetadataExtractionServiceTest {
           }
         }
         ```""";
-
     stubMessageResponse(json);
 
+    // Act
     MetadataExtractionService.ExtractionResult result =
         service.extract("Police Encounter", "Recording the police", null);
 
+    // Assert
     assertThat(result).isNotNull();
     assertThat(result.amendments()).containsExactly("FIRST");
     assertThat(result.participants()).containsExactly("POLICE");
@@ -154,6 +164,7 @@ class MetadataExtractionServiceTest {
 
   @Test
   void extract_responseWithCodeFencesNoLanguage_stripsAndParses() {
+    // Arrange
     String json =
         """
         ```
@@ -170,18 +181,20 @@ class MetadataExtractionServiceTest {
           }
         }
         ```""";
-
     stubMessageResponse(json);
 
+    // Act
     MetadataExtractionService.ExtractionResult result =
         service.extract("Fourth Amendment Test", "Description", null);
 
+    // Assert
     assertThat(result).isNotNull();
     assertThat(result.amendments()).containsExactly("FOURTH");
   }
 
   @Test
   void extract_responseWithXmlThinkingThenJson_parsesJsonFromEnd() {
+    // Arrange
     String response =
         """
         <evidence_extraction>
@@ -231,12 +244,13 @@ class MetadataExtractionServiceTest {
             "location": 0.85
           }
         }""";
-
     stubMessageResponse(response);
 
+    // Act
     MetadataExtractionService.ExtractionResult result =
         service.extract("First Amendment Audit - City Hall", "Police arrived in Springfield", null);
 
+    // Assert
     assertThat(result).isNotNull();
     assertThat(result.amendments()).containsExactly("FIRST");
     assertThat(result.participants()).containsExactly("POLICE");
@@ -253,11 +267,14 @@ class MetadataExtractionServiceTest {
 
   @Test
   void extract_clientThrowsException_throwsMetadataExtractionException() {
+    // Arrange
     when(mockMessageService.create(any(MessageCreateParams.class)))
         .thenThrow(new RuntimeException("API connection failed"));
 
+    // Act
     Throwable thrown = catchThrowable(() -> service.extract("Title", "Description", null));
 
+    // Assert
     assertThat(thrown)
         .isInstanceOf(MetadataExtractionException.class)
         .hasMessageContaining("AI metadata extraction failed")
@@ -267,12 +284,15 @@ class MetadataExtractionServiceTest {
 
   @Test
   void extract_noTextContent_throwsMetadataExtractionException() {
+    // Arrange
     Message emptyMessage = mock(Message.class);
     when(emptyMessage.content()).thenReturn(List.of());
     when(mockMessageService.create(any(MessageCreateParams.class))).thenReturn(emptyMessage);
 
+    // Act
     Throwable thrown = catchThrowable(() -> service.extract("Title", "Description", null));
 
+    // Assert
     assertThat(thrown)
         .isInstanceOf(MetadataExtractionException.class)
         .hasMessageContaining("No text content in AI response");
@@ -280,15 +300,17 @@ class MetadataExtractionServiceTest {
 
   @Test
   void extract_nonTextContentOnly_throwsMetadataExtractionException() {
+    // Arrange
     ContentBlock nonTextBlock = mock(ContentBlock.class);
     when(nonTextBlock.isText()).thenReturn(false);
-
     Message message = mock(Message.class);
     when(message.content()).thenReturn(List.of(nonTextBlock));
     when(mockMessageService.create(any(MessageCreateParams.class))).thenReturn(message);
 
+    // Act
     Throwable thrown = catchThrowable(() -> service.extract("Title", "Description", null));
 
+    // Assert
     assertThat(thrown)
         .isInstanceOf(MetadataExtractionException.class)
         .hasMessageContaining("No text content in AI response");
@@ -296,10 +318,13 @@ class MetadataExtractionServiceTest {
 
   @Test
   void extract_invalidJson_throwsMetadataExtractionException() {
+    // Arrange
     stubMessageResponse("this is not valid json");
 
+    // Act
     Throwable thrown = catchThrowable(() -> service.extract("Title", "Description", null));
 
+    // Assert
     assertThat(thrown)
         .isInstanceOf(MetadataExtractionException.class)
         .hasMessageContaining("AI metadata extraction failed");
@@ -307,6 +332,7 @@ class MetadataExtractionServiceTest {
 
   @Test
   void extract_nullDescription_sendsEmptyString() {
+    // Arrange
     String json =
         """
         {
@@ -321,17 +347,19 @@ class MetadataExtractionServiceTest {
             "location": null
           }
         }""";
-
     stubMessageResponse(json);
 
+    // Act
     MetadataExtractionService.ExtractionResult result = service.extract("Title", null, null);
 
+    // Assert
     assertThat(result).isNotNull();
     assertThat(result.amendments()).containsExactly("FIRST");
   }
 
   @Test
   void extract_responseWithUnknownFields_ignoresThemGracefully() {
+    // Arrange
     String json =
         """
         {
@@ -347,29 +375,36 @@ class MetadataExtractionServiceTest {
           },
           "unknownField": "should be ignored"
         }""";
-
     stubMessageResponse(json);
 
+    // Act
     MetadataExtractionService.ExtractionResult result =
         service.extract("Title", "Description", null);
 
+    // Assert
     assertThat(result).isNotNull();
     assertThat(result.amendments()).containsExactly("FIRST");
   }
 
   @Test
   void metadataExtractionException_messageOnlyConstructor() {
+    // Arrange & Act
     MetadataExtractionException ex = new MetadataExtractionException("test message");
 
+    // Assert
     assertThat(ex.getMessage()).isEqualTo("test message");
     assertThat(ex.getCause()).isNull();
   }
 
   @Test
   void metadataExtractionException_messageAndCauseConstructor() {
+    // Arrange
     RuntimeException cause = new RuntimeException("root cause");
+
+    // Act
     MetadataExtractionException ex = new MetadataExtractionException("test message", cause);
 
+    // Assert
     assertThat(ex.getMessage()).isEqualTo("test message");
     assertThat(ex.getCause()).isSameAs(cause);
   }
