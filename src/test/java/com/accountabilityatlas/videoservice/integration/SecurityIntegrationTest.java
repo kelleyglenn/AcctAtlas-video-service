@@ -112,7 +112,8 @@ class SecurityIntegrationTest {
                 212,
                 "channel-123",
                 "Test Channel",
-                Instant.parse("2024-01-01T00:00:00Z")));
+                Instant.parse("2024-01-01T00:00:00Z"),
+                null));
     when(locationClient.getLocation(any()))
         .thenReturn(
             Optional.of(

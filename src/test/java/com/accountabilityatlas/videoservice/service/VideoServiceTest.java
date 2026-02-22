@@ -208,7 +208,8 @@ class VideoServiceTest {
             120,
             "channel",
             "Channel Name",
-            Instant.parse("2024-01-01T00:00:00Z"));
+            Instant.parse("2024-01-01T00:00:00Z"),
+            null);
     when(youTubeService.fetchMetadata("abc123def45")).thenReturn(metadata);
     when(videoRepository.save(any(Video.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));

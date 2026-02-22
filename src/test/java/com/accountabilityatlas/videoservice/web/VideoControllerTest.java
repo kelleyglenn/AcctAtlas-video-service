@@ -14,6 +14,7 @@ import com.accountabilityatlas.videoservice.domain.VideoLocation;
 import com.accountabilityatlas.videoservice.domain.VideoStatus;
 import com.accountabilityatlas.videoservice.exception.InvalidYouTubeUrlException;
 import com.accountabilityatlas.videoservice.exception.UnauthorizedException;
+import com.accountabilityatlas.videoservice.service.MetadataExtractionService;
 import com.accountabilityatlas.videoservice.service.VideoLocationService;
 import com.accountabilityatlas.videoservice.service.VideoService;
 import com.accountabilityatlas.videoservice.service.YouTubeService;
@@ -46,6 +47,7 @@ class VideoControllerTest {
   @Mock private VideoService videoService;
   @Mock private VideoLocationService videoLocationService;
   @Mock private YouTubeService youTubeService;
+  @Mock private MetadataExtractionService metadataExtractionService;
 
   @InjectMocks private VideoController videoController;
 
@@ -414,7 +416,8 @@ class VideoControllerTest {
             212,
             "UCuAXFkgsw1L7xaCfnd5JJOw",
             "Test Channel",
-            Instant.parse("2024-06-01T12:00:00Z"));
+            Instant.parse("2024-06-01T12:00:00Z"),
+            null);
     when(youTubeService.extractVideoId(url)).thenReturn(videoId);
     when(youTubeService.fetchMetadata(videoId)).thenReturn(metadata);
     when(videoService.findByYoutubeId(videoId)).thenReturn(Optional.empty());
@@ -448,7 +451,8 @@ class VideoControllerTest {
             212,
             "UCuAXFkgsw1L7xaCfnd5JJOw",
             "Test Channel",
-            Instant.parse("2024-06-01T12:00:00Z"));
+            Instant.parse("2024-06-01T12:00:00Z"),
+            null);
     Video existingVideo = sampleVideo();
     when(youTubeService.extractVideoId(url)).thenReturn(videoId);
     when(youTubeService.fetchMetadata(videoId)).thenReturn(metadata);
@@ -474,6 +478,104 @@ class VideoControllerTest {
 
     // Assert
     assertThat(thrown).isInstanceOf(InvalidYouTubeUrlException.class);
+  }
+
+  @Test
+  void extractVideoMetadata_unauthenticated_throwsUnauthorized() {
+    Throwable thrown =
+        catchThrowable(
+            () ->
+                videoController.extractVideoMetadata(
+                    "https://www.youtube.com/watch?v=dQw4w9WgXcQ"));
+
+    assertThat(thrown).isInstanceOf(UnauthorizedException.class);
+  }
+
+  @Test
+  void extractVideoMetadata_authenticated_returnsExtraction() {
+    setAuth();
+    String url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+    String videoId = "dQw4w9WgXcQ";
+    YouTubeMetadata metadata =
+        new YouTubeMetadata(
+            videoId,
+            "First Amendment Audit - City Hall",
+            "Auditing city hall",
+            "http://thumb",
+            300,
+            "channel",
+            "Channel",
+            Instant.parse("2024-01-01T00:00:00Z"),
+            "2024-01-01");
+    MetadataExtractionService.ExtractionResult result =
+        new MetadataExtractionService.ExtractionResult(
+            List.of("FIRST"),
+            List.of("POLICE", "CITIZEN"),
+            "2024-03-15",
+            new MetadataExtractionService.LocationSuggestion(
+                "City Hall", "Springfield", "IL", null, null),
+            new MetadataExtractionService.ConfidenceScores(0.9, 0.85, 0.6, 0.8));
+
+    when(youTubeService.extractVideoId(url)).thenReturn(videoId);
+    when(youTubeService.fetchMetadata(videoId)).thenReturn(metadata);
+    when(metadataExtractionService.extract(
+            metadata.title(), metadata.description(), metadata.publishedAt().toString()))
+        .thenReturn(result);
+
+    VideoMetadataExtraction extraction = videoController.extractVideoMetadata(url).getBody();
+
+    assertNotNull(extraction);
+    assertThat(extraction.getAmendments())
+        .containsExactly(com.accountabilityatlas.videoservice.web.model.Amendment.FIRST);
+    assertThat(extraction.getParticipants()).hasSize(2);
+    assertThat(extraction.getVideoDate()).isEqualTo(LocalDate.of(2024, 3, 15));
+    assertNotNull(extraction.getLocation());
+    assertThat(extraction.getLocation().getName()).isEqualTo("City Hall");
+    assertNotNull(extraction.getConfidence());
+  }
+
+  @Test
+  void extractVideoMetadata_invalidUrl_throwsInvalidYouTubeUrl() {
+    setAuth();
+    String url = "https://example.com/not-a-video";
+    when(youTubeService.extractVideoId(url)).thenThrow(new InvalidYouTubeUrlException(url));
+
+    Throwable thrown = catchThrowable(() -> videoController.extractVideoMetadata(url));
+
+    assertThat(thrown).isInstanceOf(InvalidYouTubeUrlException.class);
+  }
+
+  @Test
+  void extractVideoMetadata_serviceThrows_propagatesMetadataExtractionException() {
+    setAuth();
+    String url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+    String videoId = "dQw4w9WgXcQ";
+    YouTubeMetadata metadata =
+        new YouTubeMetadata(
+            videoId,
+            "Test Title",
+            "Test Description",
+            "http://thumb",
+            300,
+            "channel",
+            "Channel",
+            Instant.parse("2024-01-01T00:00:00Z"),
+            null);
+
+    when(youTubeService.extractVideoId(url)).thenReturn(videoId);
+    when(youTubeService.fetchMetadata(videoId)).thenReturn(metadata);
+    when(metadataExtractionService.extract(
+            metadata.title(), metadata.description(), metadata.publishedAt().toString()))
+        .thenThrow(
+            new com.accountabilityatlas.videoservice.exception.MetadataExtractionException(
+                "AI extraction not configured"));
+
+    Throwable thrown = catchThrowable(() -> videoController.extractVideoMetadata(url));
+
+    assertThat(thrown)
+        .isInstanceOf(
+            com.accountabilityatlas.videoservice.exception.MetadataExtractionException.class)
+        .hasMessageContaining("AI extraction not configured");
   }
 
   private void setAuth() {

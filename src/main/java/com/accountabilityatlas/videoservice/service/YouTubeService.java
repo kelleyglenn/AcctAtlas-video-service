@@ -41,7 +41,8 @@ public class YouTubeService {
       Integer durationSeconds,
       String channelId,
       String channelName,
-      Instant publishedAt)
+      Instant publishedAt,
+      String recordingDate)
       implements Serializable {}
 
   public String extractVideoId(String url) {
@@ -73,7 +74,7 @@ public class YouTubeService {
                           .path("/videos")
                           .queryParam("id", videoId)
                           .queryParam("key", properties.getApiKey())
-                          .queryParam("part", "snippet,contentDetails")
+                          .queryParam("part", "snippet,contentDetails,recordingDetails")
                           .build())
               .retrieve()
               .bodyToMono(YouTubeApiResponse.class)
@@ -86,6 +87,7 @@ public class YouTubeService {
       var item = response.items().getFirst();
       var snippet = item.snippet();
       var contentDetails = item.contentDetails();
+      var recordingDetails = item.recordingDetails();
 
       return new YouTubeMetadata(
           videoId,
@@ -95,7 +97,8 @@ public class YouTubeService {
           parseDuration(contentDetails.duration()),
           snippet.channelId(),
           snippet.channelTitle(),
-          Instant.parse(snippet.publishedAt()));
+          Instant.parse(snippet.publishedAt()),
+          recordingDetails != null ? recordingDetails.recordingDate() : null);
 
     } catch (WebClientResponseException.NotFound e) {
       throw new YouTubeVideoNotFoundException(videoId);
@@ -121,7 +124,8 @@ public class YouTubeService {
 
   record YouTubeApiResponse(List<VideoItem> items) {}
 
-  record VideoItem(Snippet snippet, ContentDetails contentDetails) {}
+  record VideoItem(
+      Snippet snippet, ContentDetails contentDetails, RecordingDetails recordingDetails) {}
 
   record Snippet(
       String title,
@@ -132,6 +136,8 @@ public class YouTubeService {
       Thumbnails thumbnails) {}
 
   record ContentDetails(String duration) {}
+
+  record RecordingDetails(String recordingDate) {}
 
   record Thumbnails(
       Thumbnail defaultThumb,

@@ -6,6 +6,7 @@ import com.accountabilityatlas.videoservice.domain.Video;
 import com.accountabilityatlas.videoservice.domain.VideoLocation;
 import com.accountabilityatlas.videoservice.domain.VideoStatus;
 import com.accountabilityatlas.videoservice.exception.UnauthorizedException;
+import com.accountabilityatlas.videoservice.service.MetadataExtractionService;
 import com.accountabilityatlas.videoservice.service.VideoLocationService;
 import com.accountabilityatlas.videoservice.service.VideoService;
 import com.accountabilityatlas.videoservice.service.YouTubeService;
@@ -37,6 +38,7 @@ public class VideoController implements VideosApi, VideoLocationsApi {
   private final VideoService videoService;
   private final VideoLocationService videoLocationService;
   private final YouTubeService youTubeService;
+  private final MetadataExtractionService metadataExtractionService;
 
   /**
    * Fetch a single video by id, enforcing visibility rules based on the caller's identity and trust
@@ -218,6 +220,18 @@ public class VideoController implements VideosApi, VideoLocationsApi {
     return ResponseEntity.ok(preview);
   }
 
+  /** Extract metadata from a YouTube video using AI. */
+  @Override
+  public ResponseEntity<VideoMetadataExtraction> extractVideoMetadata(String youtubeUrl) {
+    requireCurrentUserId();
+    String videoId = youTubeService.extractVideoId(youtubeUrl);
+    YouTubeMetadata metadata = youTubeService.fetchMetadata(videoId);
+    String publishedAt = metadata.publishedAt() != null ? metadata.publishedAt().toString() : null;
+    MetadataExtractionService.ExtractionResult result =
+        metadataExtractionService.extract(metadata.title(), metadata.description(), publishedAt);
+    return ResponseEntity.ok(toVideoMetadataExtraction(result));
+  }
+
   /** Fetch locations linked to a video by id. */
   @Override
   public ResponseEntity<VideoLocationsResponse> getVideoLocations(UUID id) {
@@ -379,6 +393,67 @@ public class VideoController implements VideosApi, VideoLocationsApi {
       return null;
     }
     return jwt.getClaimAsString("trustTier");
+  }
+
+  /** Map an AI extraction result to the API model. */
+  private VideoMetadataExtraction toVideoMetadataExtraction(
+      MetadataExtractionService.ExtractionResult result) {
+    VideoMetadataExtraction extraction = new VideoMetadataExtraction();
+    extraction.setAmendments(
+        result.amendments() != null
+            ? result.amendments().stream()
+                .filter(this::isValidAmendment)
+                .map(com.accountabilityatlas.videoservice.web.model.Amendment::valueOf)
+                .toList()
+            : List.of());
+    extraction.setParticipants(
+        result.participants() != null
+            ? result.participants().stream()
+                .filter(this::isValidParticipant)
+                .map(com.accountabilityatlas.videoservice.web.model.Participant::valueOf)
+                .toList()
+            : List.of());
+    extraction.setVideoDate(
+        result.videoDate() != null ? java.time.LocalDate.parse(result.videoDate()) : null);
+
+    if (result.location() != null) {
+      ExtractedLocation loc = new ExtractedLocation();
+      loc.setName(result.location().name());
+      loc.setCity(result.location().city());
+      loc.setState(result.location().state());
+      loc.setLatitude(result.location().latitude());
+      loc.setLongitude(result.location().longitude());
+      extraction.setLocation(loc);
+    }
+
+    if (result.confidence() != null) {
+      ConfidenceScores scores = new ConfidenceScores();
+      scores.setAmendments(result.confidence().amendments());
+      scores.setParticipants(result.confidence().participants());
+      scores.setVideoDate(result.confidence().videoDate());
+      scores.setLocation(result.confidence().location());
+      extraction.setConfidence(scores);
+    }
+
+    return extraction;
+  }
+
+  private boolean isValidAmendment(String value) {
+    try {
+      com.accountabilityatlas.videoservice.web.model.Amendment.valueOf(value);
+      return true;
+    } catch (IllegalArgumentException e) {
+      return false;
+    }
+  }
+
+  private boolean isValidParticipant(String value) {
+    try {
+      com.accountabilityatlas.videoservice.web.model.Participant.valueOf(value);
+      return true;
+    } catch (IllegalArgumentException e) {
+      return false;
+    }
   }
 
   /** Safely parse a string into a URI, returning null for blank or invalid values. */
