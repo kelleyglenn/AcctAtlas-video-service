@@ -33,9 +33,9 @@ class MetadataExtractionServiceTest {
   void setUp() {
     AnthropicProperties properties = new AnthropicProperties();
     properties.setApiKey("test-api-key");
-    properties.setModel("claude-sonnet-4-6");
+    properties.setModel("claude-haiku-4-5-20251001");
     properties.setMaxTokens(4096);
-    properties.setTimeout(Duration.ofSeconds(60));
+    properties.setTimeout(Duration.ofSeconds(30));
 
     service = new MetadataExtractionService(properties, objectMapper);
 

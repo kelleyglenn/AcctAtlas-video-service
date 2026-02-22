@@ -65,9 +65,9 @@ app:
     timeout: 5s
   anthropic:
     api-key: ${ANTHROPIC_API_KEY:}
-    model: claude-sonnet-4-6
+    model: claude-haiku-4-5-20251001
     max-tokens: 4096
-    timeout: 60s
+    timeout: 30s
   location-service:
     base-url: ${LOCATION_SERVICE_URL:http://localhost:8083}
   internal:
@@ -101,4 +101,4 @@ resilience4j:
       youtube:
         timeoutDuration: 5s
       anthropic:
-        timeoutDuration: 60s
+        timeoutDuration: 30s
