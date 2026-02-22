@@ -403,14 +403,14 @@ public class VideoController implements VideosApi, VideoLocationsApi {
         result.amendments() != null
             ? result.amendments().stream()
                 .filter(this::isValidAmendment)
-                .map(a -> com.accountabilityatlas.videoservice.web.model.Amendment.valueOf(a))
+                .map(com.accountabilityatlas.videoservice.web.model.Amendment::valueOf)
                 .toList()
             : List.of());
     extraction.setParticipants(
         result.participants() != null
             ? result.participants().stream()
                 .filter(this::isValidParticipant)
-                .map(p -> com.accountabilityatlas.videoservice.web.model.Participant.valueOf(p))
+                .map(com.accountabilityatlas.videoservice.web.model.Participant::valueOf)
                 .toList()
             : List.of());
     extraction.setVideoDate(

@@ -8,6 +8,7 @@ import com.anthropic.models.messages.ContentBlock;
 import com.anthropic.models.messages.Message;
 import com.anthropic.models.messages.MessageCreateParams;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
@@ -282,7 +283,7 @@ public class MetadataExtractionService {
       MessageCreateParams params =
           MessageCreateParams.builder()
               .model(properties.getModel())
-              .maxTokens((long) properties.getMaxTokens())
+              .maxTokens(properties.getMaxTokens())
               .addUserMessage(userMessage)
               .build();
 
@@ -294,10 +295,7 @@ public class MetadataExtractionService {
       String json = extractJson(text);
 
       return objectMapper.readValue(json, ExtractionResult.class);
-    } catch (MetadataExtractionException e) {
-      throw e;
-    } catch (Exception e) {
-      log.error("Failed to extract metadata from video: {}", title, e);
+    } catch (JsonProcessingException e) {
       throw new MetadataExtractionException("AI metadata extraction failed: " + e.getMessage(), e);
     }
   }
