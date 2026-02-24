@@ -149,8 +149,6 @@ public class VideoController implements VideosApi, VideoLocationsApi {
             trustTier != null ? trustTier : "NEW",
             List.of(locationId));
 
-    videoLocationService.addLocationInternal(video.getId(), locationId, true);
-
     return ResponseEntity.status(HttpStatus.CREATED).body(toVideoDetail(video));
   }
 
