@@ -285,7 +285,6 @@ class VideoControllerTest {
             eq(userId),
             any(),
             anyList());
-    verify(videoLocationService).addLocationInternal(video.getId(), locationId, true);
   }
 
   @Test

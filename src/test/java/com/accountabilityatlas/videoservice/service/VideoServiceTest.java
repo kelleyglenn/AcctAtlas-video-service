@@ -3,6 +3,7 @@ package com.accountabilityatlas.videoservice.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 import com.accountabilityatlas.videoservice.domain.Amendment;
@@ -41,6 +42,8 @@ class VideoServiceTest {
   @Mock private YouTubeService youTubeService;
 
   @Mock private VideoEventPublisher videoEventPublisher;
+
+  @Mock private VideoLocationService videoLocationService;
 
   @InjectMocks private VideoService videoService;
 
@@ -196,6 +199,7 @@ class VideoServiceTest {
   @Test
   void createVideo_validRequest_savesMetadataAndSetsPending() {
     // Arrange
+    UUID locationId = UUID.randomUUID();
     when(youTubeService.extractVideoId("url")).thenReturn("abc123def45");
     when(videoRepository.existsByYoutubeId("abc123def45")).thenReturn(false);
 
@@ -223,13 +227,54 @@ class VideoServiceTest {
             LocalDate.of(2024, 1, 2),
             userId,
             "NEW",
-            Collections.emptyList());
+            List.of(locationId));
 
     // Assert
     assertThat(created.getYoutubeId()).isEqualTo("abc123def45");
     assertThat(created.getTitle()).isEqualTo("Title");
     assertThat(created.getStatus()).isEqualTo(VideoStatus.PENDING);
     assertThat(created.getSubmittedBy()).isEqualTo(userId);
+    verify(videoLocationService).addLocationInternal(any(), eq(locationId), eq(true));
+  }
+
+  @Test
+  void createVideo_linksLocationBeforePublishingEvent() {
+    // Arrange
+    UUID locationId = UUID.randomUUID();
+    when(youTubeService.extractVideoId("url")).thenReturn("abc123def45");
+    when(videoRepository.existsByYoutubeId("abc123def45")).thenReturn(false);
+
+    YouTubeMetadata metadata =
+        new YouTubeMetadata(
+            "abc123def45",
+            "Title",
+            "Desc",
+            "http://thumb",
+            120,
+            "channel",
+            "Channel Name",
+            Instant.parse("2024-01-01T00:00:00Z"),
+            null);
+    when(youTubeService.fetchMetadata("abc123def45")).thenReturn(metadata);
+    when(videoRepository.save(any(Video.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    // Act
+    videoService.createVideo(
+        "url",
+        Set.of(Amendment.FIRST),
+        Set.of(Participant.POLICE),
+        null,
+        userId,
+        "ADMIN",
+        List.of(locationId));
+
+    // Assert — verify ordering: location linked before event published
+    var inOrder = inOrder(videoLocationService, videoEventPublisher);
+    inOrder.verify(videoLocationService).addLocationInternal(any(), eq(locationId), eq(true));
+    inOrder
+        .verify(videoEventPublisher)
+        .publishVideoSubmitted(any(), eq("ADMIN"), eq(List.of(locationId)));
   }
 
   @Test
