@@ -25,6 +25,7 @@ public class VideoService {
   private final VideoRepository videoRepository;
   private final YouTubeService youTubeService;
   private final VideoEventPublisher videoEventPublisher;
+  private final VideoLocationService videoLocationService;
 
   @Transactional(readOnly = true)
   public Video getVideo(UUID id) {
@@ -100,6 +101,12 @@ public class VideoService {
     video.setSubmittedBy(submittedBy);
 
     Video saved = videoRepository.save(video);
+
+    // Link locations before publishing event — ensures locations are committed
+    // before moderation-service callback queries for them (fixes #49)
+    for (int i = 0; i < locationIds.size(); i++) {
+      videoLocationService.addLocationInternal(saved.getId(), locationIds.get(i), i == 0);
+    }
 
     // Publish event after successful save
     videoEventPublisher.publishVideoSubmitted(saved, submitterTrustTier, locationIds);
