@@ -6,6 +6,7 @@ import java.util.UUID;
 
 public record VideoStatusChangedEvent(
     UUID videoId,
+    UUID submittedBy,
     List<UUID> locationIds,
     String previousStatus,
     String newStatus,

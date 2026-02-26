@@ -26,6 +26,12 @@ public class VideoEventPublisher {
   @Value("${app.sqs.video-status-events-queue:video-status-events}")
   private String videoStatusEventsQueue;
 
+  @Value("${app.sqs.user-video-events-queue:user-video-events}")
+  private String userVideoEventsQueue;
+
+  @Value("${app.sqs.user-video-status-events-queue:user-video-status-events}")
+  private String userVideoStatusEventsQueue;
+
   /**
    * Publishes a VideoSubmitted event to the video-events queue.
    *
@@ -51,6 +57,7 @@ public class VideoEventPublisher {
         videoEventsQueue);
     try {
       sqsTemplate.send(videoEventsQueue, event);
+      sqsTemplate.send(userVideoEventsQueue, event);
       log.debug("Published VideoSubmitted event: {}", event);
     } catch (Exception e) {
       log.error(
@@ -63,17 +70,24 @@ public class VideoEventPublisher {
   }
 
   /**
-   * Publishes a VideoStatusChanged event to the video-status-events queue.
+   * Publishes a VideoStatusChanged event to the video-status-events and user-video-status-events
+   * queues.
    *
    * @param videoId the video ID
+   * @param submittedBy the submitter's user ID
    * @param locationIds list of location IDs associated with the video
    * @param previousStatus the previous status (as String to avoid cross-service coupling)
    * @param newStatus the new status
    */
   public void publishVideoStatusChanged(
-      UUID videoId, List<UUID> locationIds, String previousStatus, String newStatus) {
+      UUID videoId,
+      UUID submittedBy,
+      List<UUID> locationIds,
+      String previousStatus,
+      String newStatus) {
     VideoStatusChangedEvent event =
-        new VideoStatusChangedEvent(videoId, locationIds, previousStatus, newStatus, Instant.now());
+        new VideoStatusChangedEvent(
+            videoId, submittedBy, locationIds, previousStatus, newStatus, Instant.now());
 
     log.info(
         "Publishing VideoStatusChanged event for video {} ({} -> {}) to SQS queue {}",
@@ -83,6 +97,7 @@ public class VideoEventPublisher {
         videoStatusEventsQueue);
     try {
       sqsTemplate.send(videoStatusEventsQueue, event);
+      sqsTemplate.send(userVideoStatusEventsQueue, event);
       log.debug("Published VideoStatusChanged event: {}", event);
     } catch (Exception e) {
       log.error(

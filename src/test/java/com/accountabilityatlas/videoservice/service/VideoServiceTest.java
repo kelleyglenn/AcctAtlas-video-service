@@ -390,6 +390,7 @@ class VideoServiceTest {
     // Arrange
     Video video = new Video();
     video.setId(videoId);
+    video.setSubmittedBy(userId);
     video.setStatus(VideoStatus.PENDING);
     video.setLocations(Collections.emptyList());
     when(videoRepository.findByIdWithLocations(videoId)).thenReturn(Optional.of(video));
@@ -401,11 +402,12 @@ class VideoServiceTest {
 
     // Assert
     assertThat(updated.getStatus()).isEqualTo(VideoStatus.APPROVED);
-    verify(videoEventPublisher, never()).publishVideoStatusChanged(any(), any(), any(), any());
+    verify(videoEventPublisher)
+        .publishVideoStatusChanged(videoId, userId, Collections.emptyList(), "PENDING", "APPROVED");
   }
 
   @Test
-  void updateVideoStatus_nonApprovedTransition_doesNotPublishEvent() {
+  void updateVideoStatus_pendingToRejected_publishesStatusChangedEvent() {
     // Arrange
     UUID locationId = UUID.randomUUID();
     VideoLocation videoLocation = new VideoLocation();
@@ -413,6 +415,7 @@ class VideoServiceTest {
 
     Video video = new Video();
     video.setId(videoId);
+    video.setSubmittedBy(userId);
     video.setStatus(VideoStatus.PENDING);
     video.setLocations(List.of(videoLocation));
     when(videoRepository.findByIdWithLocations(videoId)).thenReturn(Optional.of(video));
@@ -423,7 +426,8 @@ class VideoServiceTest {
     videoService.updateVideoStatus(videoId, VideoStatus.REJECTED, null);
 
     // Assert
-    verify(videoEventPublisher, never()).publishVideoStatusChanged(any(), any(), any(), any());
+    verify(videoEventPublisher)
+        .publishVideoStatusChanged(videoId, userId, List.of(locationId), "PENDING", "REJECTED");
   }
 
   @Test
@@ -435,6 +439,7 @@ class VideoServiceTest {
 
     Video video = new Video();
     video.setId(videoId);
+    video.setSubmittedBy(userId);
     video.setStatus(VideoStatus.PENDING);
     video.setLocations(List.of(videoLocation));
     when(videoRepository.findByIdWithLocations(videoId)).thenReturn(Optional.of(video));
@@ -446,7 +451,7 @@ class VideoServiceTest {
 
     // Assert
     verify(videoEventPublisher)
-        .publishVideoStatusChanged(videoId, List.of(locationId), "PENDING", "APPROVED");
+        .publishVideoStatusChanged(videoId, userId, List.of(locationId), "PENDING", "APPROVED");
   }
 
   @Test
@@ -458,6 +463,7 @@ class VideoServiceTest {
 
     Video video = new Video();
     video.setId(videoId);
+    video.setSubmittedBy(userId);
     video.setStatus(VideoStatus.APPROVED);
     video.setLocations(List.of(videoLocation));
     when(videoRepository.findByIdWithLocations(videoId)).thenReturn(Optional.of(video));
@@ -469,7 +475,7 @@ class VideoServiceTest {
 
     // Assert
     verify(videoEventPublisher)
-        .publishVideoStatusChanged(videoId, List.of(locationId), "APPROVED", "REJECTED");
+        .publishVideoStatusChanged(videoId, userId, List.of(locationId), "APPROVED", "REJECTED");
   }
 
   @Test
@@ -479,6 +485,7 @@ class VideoServiceTest {
     video.setId(videoId);
     video.setStatus(VideoStatus.PENDING);
     video.setLocations(Collections.emptyList());
+    video.setSubmittedBy(userId);
     when(videoRepository.findByIdWithLocations(videoId)).thenReturn(Optional.of(video));
     when(videoRepository.save(any(Video.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
@@ -489,6 +496,8 @@ class VideoServiceTest {
     // Assert
     assertThat(updated.getStatus()).isEqualTo(VideoStatus.REJECTED);
     assertThat(updated.getRejectionReason()).isEqualTo("OFF_TOPIC");
+    verify(videoEventPublisher)
+        .publishVideoStatusChanged(videoId, userId, Collections.emptyList(), "PENDING", "REJECTED");
   }
 
   @Test
