@@ -58,6 +58,8 @@ app:
     video-events-queue: video-events
     moderation-events-queue: moderation-events
     video-status-events-queue: video-status-events
+    user-video-events-queue: user-video-events
+    user-video-status-events-queue: user-video-status-events
   youtube:
     api-key: ${YOUTUBE_API_KEY:}
     base-url: https://www.googleapis.com/youtube/v3
